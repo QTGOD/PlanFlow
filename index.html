@@ -1029,6 +1029,13 @@ body {
         <div><div class="setting-label">模型</div><div class="setting-desc">模型名称</div></div>
         <input class="select-field" style="width:220px;" placeholder="deepseek-chat" id="apiModelInput" onchange="App.saveApiModel(this.value)">
       </div>
+      <div class="setting-row">
+        <div><div class="setting-label">时间单位</div><div class="setting-desc">时长的显示与输入单位</div></div>
+        <select class="select-field" id="timeUnitSelect" onchange="App.saveTimeUnit(this.value)">
+          <option value="hours">小时</option>
+          <option value="minutes">分钟</option>
+        </select>
+      </div>
     </div>
     <div class="settings-section">
       <h3>数据管理</h3>
@@ -1114,8 +1121,8 @@ body {
         <input type="text" class="select-field dp-input" id="taskEditDue" placeholder="选择日期" readonly onclick="event.stopPropagation();App.toggleDatePicker('taskEditDue')">
       </div>
       <div>
-        <label>时长（分钟）</label>
-        <input class="modal-input" id="taskEditDur" placeholder="30">
+        <label id="taskEditDurLabel">时长（小时）</label>
+        <input class="modal-input" id="taskEditDur" placeholder="1.5">
       </div>
       <div>
         <label>标签</label>
@@ -1281,6 +1288,10 @@ class AppClass {
     if (apiBaseSetting) document.getElementById('apiBaseInput').value = apiBaseSetting.value;
     const apiModelSetting = await this.db.get('settings', 'apiModel');
     if (apiModelSetting) document.getElementById('apiModelInput').value = apiModelSetting.value;
+    const unitSetting = await this.db.get('settings', 'timeUnit');
+    this.timeUnit = unitSetting?.value === 'minutes' ? 'minutes' : 'hours';
+    const unitSelect = document.getElementById('timeUnitSelect');
+    if (unitSelect) unitSelect.value = this.timeUnit;
   }
 
   // ==================== Navigation ====================
@@ -1385,7 +1396,11 @@ class AppClass {
     document.getElementById('taskEditNotes').value = task.notes || '';
     document.getElementById('taskEditPriority').value = task.priority;
     document.getElementById('taskEditDue').value = task.dueDate || '';
-    document.getElementById('taskEditDur').value = task.estimatedDuration || '';
+    const durLabel = document.getElementById('taskEditDurLabel');
+    if (durLabel) durLabel.textContent = '时长（' + this._durUnitLabel() + '）';
+    const durInput = document.getElementById('taskEditDur');
+    durInput.value = this._durUIValue(task.estimatedDuration);
+    durInput.placeholder = this._durPlaceholder();
     document.getElementById('taskEditTag').value = (task.tags || []).join(',');
     document.getElementById('taskModalOverlay').classList.add('open');
   }
@@ -1397,7 +1412,7 @@ class AppClass {
     task.notes = document.getElementById('taskEditNotes').value.trim();
     task.priority = document.getElementById('taskEditPriority').value;
     task.dueDate = document.getElementById('taskEditDue').value || null;
-    task.estimatedDuration = parseInt(document.getElementById('taskEditDur').value) || 0;
+    task.estimatedDuration = this._durToMin(document.getElementById('taskEditDur').value);
     task.tags = document.getElementById('taskEditTag').value.split(',').map(s => s.trim()).filter(Boolean);
     await this.db.put('tasks', task);
     this.closeTaskModal();
@@ -2060,7 +2075,7 @@ class AppClass {
 ## 💡 时间管理建议
 基于任务量和优先级，给出1-2条具体建议。
 
-可创建的任务请使用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+可创建的任务请使用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 小时数（可小数）] 格式（时间字段根据用户需求可选）。
 可创建的目标请使用 [GOAL: 目标名 | milestones: 步骤1, 步骤2] 格式。
 
 保持简洁实用，不要过度展开。`;
@@ -2146,7 +2161,7 @@ class AppClass {
 
 ## 📋 下周建议
 2-3条具体可执行的建议。
-可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 小时数（可小数）] 格式（时间字段根据用户需求可选）。
 
 语气积极建设性，数据驱动，简洁实用。`;
 
@@ -2538,13 +2553,13 @@ class AppClass {
       const pt = ['high', 'medium', 'low'].includes(pRaw) ? pRaw : 'medium';
       const dates = (fields.dates || '').split(',').map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
       const time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(fields.time || '') ? fields.time.padStart(5, '0') : '';
-      const dur = /^\d{1,4}$/.test(fields.duration || '') ? String(parseInt(fields.duration, 10)) : '';
+      const dur = /^\d{1,3}(\.\d{1,2})?$/.test(fields.duration || '') ? String(Math.round(parseFloat(fields.duration) * 60)) : '';
       if (!dates.length) return '';
       const priLabel = {high:'🔴 高优先级', medium:'🟡 中优先级', low:'⚪ 低优先级'}[pt]||pt;
       const range = dates.length > 1 ? dates[0] + ' ~ ' + dates[dates.length - 1] + '（共' + dates.length + '天）' : dates[0];
       const timeBits = [priLabel, '📅 ' + range];
       if (time) timeBits.push('🕒 ' + time);
-      if (dur) timeBits.push('⏱ ' + dur + ' 分钟');
+      if (dur) timeBits.push('⏱ ' + this._durText(dur));
       const desc = timeBits.join('　·　') + '　·　点击按钮一键添加全部';
       return stash('<div class="ai-action-card"><span class="action-icon">☐</span><div class="action-info"><div class="action-title">'+this.esc(title)+'</div><div class="action-desc">'+desc+'</div></div><button class="ai-action-add" onclick="App._addTaskSetFromAI(\''+encodeURIComponent(title)+'\',\''+encodeURIComponent(pt)+'\',\''+encodeURIComponent(dates.join(','))+'\',\''+encodeURIComponent(time)+'\',\''+encodeURIComponent(dur)+'\',this)">➕ 批量添加 '+dates.length+' 个任务</button></div>');
     });
@@ -2561,12 +2576,12 @@ class AppClass {
       const pt = ['high', 'medium', 'low'].includes(pRaw) ? pRaw : 'medium';
       const date = /^\d{4}-\d{2}-\d{2}$/.test(fields.date || '') ? fields.date : '';
       const time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(fields.time || '') ? fields.time.padStart(5, '0') : '';
-      const dur = /^\d{1,4}$/.test(fields.duration || '') ? String(parseInt(fields.duration, 10)) : '';
+      const dur = /^\d{1,3}(\.\d{1,2})?$/.test(fields.duration || '') ? String(Math.round(parseFloat(fields.duration) * 60)) : '';
       const priLabel = {high:'🔴 高优先级', medium:'🟡 中优先级', low:'⚪ 低优先级'}[pt]||pt;
       const timeBits = [];
       if (date) timeBits.push('📅 ' + date);
       if (time) timeBits.push('🕒 ' + time);
-      if (dur) timeBits.push('⏱ ' + dur + ' 分钟');
+      if (dur) timeBits.push('⏱ ' + this._durText(dur));
       const desc = priLabel + (timeBits.length ? '　·　' + timeBits.join('　·　') : '') + '　·　点击右侧按钮添加到今日待办';
       return stash('<div class="ai-action-card"><span class="action-icon">☐</span><div class="action-info"><div class="action-title">'+this.esc(title)+'</div><div class="action-desc">'+desc+'</div></div><button class="ai-action-add" onclick="App._addTaskFromAI(\''+encodeURIComponent(title)+'\',\''+encodeURIComponent(pt)+'\',\''+encodeURIComponent(date)+'\',\''+encodeURIComponent(time)+'\',\''+encodeURIComponent(dur)+'\',this)">➕ 添加任务</button></div>');
     });
@@ -2687,9 +2702,9 @@ class AppClass {
 2. 结构化输出：如果涉及计划，用清单格式
 3. 保持简洁，重点突出
 4. 基于实际数据给出建议，不要泛泛而谈
-5. 当建议具体任务时，用格式：[TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数]
+5. 当建议具体任务时，用格式：[TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 小时数（可小数）]
 6. 当建议目标时，用格式：[GOAL: 目标名 | milestones: 步骤1, 步骤2, 步骤3]
-7. 同一件事需要连续多天执行时（如"每天8点学习""这周每天健身""下周一开始每天跑步"），用批量格式：[TASKSET: 任务名 | priority: high/medium/low | dates: YYYY-MM-DD,YYYY-MM-DD | time: HH:mm | duration: 分钟数]
+7. 同一件事需要连续多天执行时（如"每天8点学习""这周每天健身""下周一开始每天跑步"），用批量格式：[TASKSET: 任务名 | priority: high/medium/low | dates: YYYY-MM-DD,YYYY-MM-DD | time: HH:mm | duration: 小时数（可小数）]
    dates 用英文逗号分隔逐日列出执行日期；同一件事不要拆成多个 [TASK:]
 
 时间规则（重要）：
@@ -2697,7 +2712,7 @@ class AppClass {
 - 用户提出时间需求时，[TASK:] 必须输出对应的字段：
   · 日期需求（如"明天""周五""下周一""10月25日"）→ date: YYYY-MM-DD，必须换算成绝对日期
   · 时刻需求（如"下午3点""9点半"）→ time: HH:mm，24 小时制
-  · 时长需求（如"1小时""半小时""90分钟"）→ duration: 分钟数
+  · 时长需求（如"1小时""半小时""90分钟"）→ duration: 小时数（"1小时"→1，"半小时"→0.5，"90分钟"→1.5，可小数）
 - [TASKSET:] 的 dates 同样逐日列出换算后的绝对日期，time/duration 规则与 [TASK:] 一致
 - 时间字段均可选：用户没有提到的时间信息不要输出对应字段
 - date/dates 不要输出"明天""周五"等相对说法，一律 YYYY-MM-DD；time 一律 24 小时制 HH:mm
@@ -2881,6 +2896,22 @@ class AppClass {
   async saveApiModel(value) {
     await this.db.put('settings', { key: 'apiModel', value });
   }
+
+  async saveTimeUnit(value) {
+    this.timeUnit = value === 'minutes' ? 'minutes' : 'hours';
+    const sel = document.getElementById('timeUnitSelect');
+    if (sel) sel.value = this.timeUnit;
+    await this.db.put('settings', { key: 'timeUnit', value: this.timeUnit });
+    this.renderAll();
+  }
+
+  _durUnitLabel() { return this.timeUnit === 'minutes' ? '分钟' : '小时'; }
+  _durPlaceholder() { return this.timeUnit === 'minutes' ? '30' : '1.5'; }
+  _durDefaultValue() { return this.timeUnit === 'minutes' ? '30' : '1'; }
+  _durUIValue(min) { return min ? (this.timeUnit === 'minutes' ? min : Number(min) / 60) : ''; }
+  _durToMin(v) { return Math.round((parseFloat(v) || 0) * (this.timeUnit === 'minutes' ? 1 : 60)); }
+  _durText(min) { return this.timeUnit === 'minutes' ? min + ' 分钟' : (Number(min) / 60) + ' 小时'; }
+  _durChip(min) { return this.timeUnit === 'minutes' ? min + 'min' : (Number(min) / 60) + 'h'; }
 
   async testAI() {
     const statusEl = document.getElementById('aiStatus');
@@ -3105,7 +3136,7 @@ class AppClass {
         draggable="true"
         ondragstart="App.dragTimelineBlock(event,'${t.id}')"
         ondragend="this.style.opacity=''"
-      >${t.completed?'✓ ':''}${this.esc(t.title)} <span style="font-size:0.65rem;opacity:0.7;">${dur}min</span></div>`;
+      >${t.completed?'✓ ':''}${this.esc(t.title)} <span style="font-size:0.65rem;opacity:0.7;">${this._durChip(dur)}</span></div>`;
     });
 
     document.getElementById('planCalBody').innerHTML = `<div class="timeline-slots" id="timelineSlots">${html}${blocks}</div>`;
@@ -3140,7 +3171,7 @@ class AppClass {
       <select class="add-task-priority" id="planAddPriority">
         <option value="medium">🟡</option><option value="high">🔴</option><option value="low">⚪</option>
       </select>
-      <input class="duration-input" id="planAddDur" placeholder="min" value="30" style="width:40px;">
+      <input class="duration-input" id="planAddDur" placeholder="${this._durPlaceholder()}" value="${this._durDefaultValue()}" style="width:52px;">
       <button class="add-task-btn" onclick="App._planAddTask('${date||''}')">添加</button>
     </div>`;
 
@@ -3170,7 +3201,7 @@ class AppClass {
         <div class="task-check" onclick="event.stopPropagation(); App.toggleTask('${task.id}')"></div>
         <span class="task-title" onclick="App.editTask('${task.id}')">${this.esc(task.title)}</span>
         <span class="task-priority ${task.priority}"></span>
-        ${dur > 0 ? `<span class="task-duration">${dur}min</span>` : ''}
+        ${dur > 0 ? `<span class="task-duration">${this._durChip(dur)}</span>` : ''}
         <span class="timer-display${isTiming?' running':''}" id="timer-${task.id}">${this._formatTime(spent)}</span>
         ${!task.completed ? `
         <div class="task-actions" style="opacity:1;">
@@ -3190,7 +3221,7 @@ class AppClass {
     const title = input?.value?.trim();
     if (!title) return;
     const priority = document.getElementById('planAddPriority')?.value || 'medium';
-    const dur = parseInt(document.getElementById('planAddDur')?.value) || 0;
+    const dur = this._durToMin(document.getElementById('planAddDur')?.value);
     const task = {
       id: uuid(), title, notes: '', completed: false, priority,
       tags: [], dueDate: date || null, parentId: null,
@@ -3492,7 +3523,7 @@ class AppClass {
 ## 🔥 习惯提醒
 ## 💡 建议
 
-可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 小时数（可小数）] 格式（时间字段根据用户需求可选）。
 根据任务时长合理分配，不要超时。`;
 
     try {
