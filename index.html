@@ -1,0 +1,3677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanFlow · 个人计划管理</title>
+<style>
+/* ===================== CSS Reset & Glass Variables ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #e8ecf4;
+  --surface: #ffffff;
+  --surface-hover: #f1f3f5;
+  --border: rgba(0,0,0,0.06);
+  --text-primary: #1a1a2e;
+  --text-secondary: #6b7280;
+  --text-muted: #6f7886;
+  --accent: #6366f1;
+  --accent-light: #eef2ff;
+  --accent-glow: rgba(99,102,241,0.2);
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.1);
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --transition: 200ms cubic-bezier(0.4,0,0.2,1);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Consolas", monospace;
+  --sidebar-w: 200px;
+  --sidebar-collapsed: 56px;
+  --glass-bg: rgba(255,255,255,0.72);
+  --glass-border: rgba(255,255,255,0.5);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.06);
+  --glass-blur: 18px;
+  --bg-gradient-1: #e8ecf4;
+  --bg-gradient-2: #f0e6f6;
+  --bg-gradient-3: #fce4ec;
+}
+[data-theme="dark"] {
+  --bg: #08081a;
+  --surface: #12122a;
+  --surface-hover: #1e1e3a;
+  --border: rgba(255,255,255,0.06);
+  --text-primary: #e5e7eb;
+  --text-secondary: #9ca3af;
+  --text-muted: #8b95a5;
+  --accent: #818cf8;
+  --accent-light: #1e1b4b;
+  --accent-glow: rgba(129,140,248,0.25);
+  --success: #34d399;
+  --success-bg: #064e3b;
+  --danger: #f87171;
+  --danger-bg: #450a0a;
+  --warning: #fbbf24;
+  --warning-bg: #451a03;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.4);
+  --glass-bg: rgba(18,18,42,0.65);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  --bg-gradient-1: #08081a;
+  --bg-gradient-2: #0f0f2e;
+  --bg-gradient-3: #1a0a2e;
+}
+
+/* Time-of-day ambient backgrounds */
+body.tod-morning { --bg-gradient-1: #e8f0fe; --bg-gradient-2: #f3e8ff; --bg-gradient-3: #fce4ec; }
+body.tod-afternoon { --bg-gradient-1: #e0f2fe; --bg-gradient-2: #f0f9ff; --bg-gradient-3: #ecfdf5; }
+body.tod-evening { --bg-gradient-1: #fef3c7; --bg-gradient-2: #fce7f3; --bg-gradient-3: #ede9fe; }
+body.tod-night { --bg-gradient-1: #dfe4f2; --bg-gradient-2: #e4dff0; --bg-gradient-3: #dde6f2; }
+[data-theme="dark"] body.tod-morning { --bg-gradient-1: #0f0a2e; --bg-gradient-2: #1a1035; --bg-gradient-3: #1a0a2e; }
+[data-theme="dark"] body.tod-afternoon { --bg-gradient-1: #0a1a2e; --bg-gradient-2: #0f1a35; --bg-gradient-3: #0a2e1a; }
+[data-theme="dark"] body.tod-evening { --bg-gradient-1: #2e1a0a; --bg-gradient-2: #2e0a1a; --bg-gradient-3: #1a0a2e; }
+[data-theme="dark"] body.tod-night { --bg-gradient-1: #08081a; --bg-gradient-2: #0a0a1e; --bg-gradient-3: #0a0a1a; }
+
+html { font-size: 15px; }
+body {
+  font-family: var(--font);
+  background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2), var(--bg-gradient-3));
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh; display: flex;
+  transition: background 800ms ease, color var(--transition);
+}
+
+/* ===================== Glass Panels ===================== */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ===================== Sidebar (glass + collapsible) ===================== */
+.sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-right: 1px solid var(--glass-border);
+  display: flex; flex-direction: column; padding: 16px 10px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto; overflow-x: hidden;
+  transition: width 300ms cubic-bezier(0.4,0,0.2,1), min-width 300ms cubic-bezier(0.4,0,0.2,1), background var(--transition);
+  z-index: 50;
+}
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed); min-width: var(--sidebar-collapsed);
+  padding: 16px 8px;
+}
+.sidebar.collapsed .logo span { margin: 0 auto; }
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-item span:not(.icon),
+.sidebar.collapsed .nav-item .badge { display: none; }
+.sidebar.collapsed .logo { justify-content: center; font-size: 0; }
+.sidebar.collapsed .logo span { font-size: 1.5rem; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 10px 0; }
+.sidebar.collapsed .nav-item .icon { font-size: 1.3rem; }
+
+.sidebar-toggle {
+  position: absolute; top: 12px; right: 8px;
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 1rem; padding: 4px;
+  border-radius: var(--radius-sm); transition: all var(--transition);
+  z-index: 51;
+}
+.sidebar-toggle:hover { background: var(--surface-hover); color: var(--text-primary); }
+.sidebar.collapsed .sidebar-toggle { right: 50%; transform: translateX(50%); }
+.logo {
+  font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--accent); padding: 0 10px; margin-bottom: 24px;
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+.logo span { font-size: 1.5rem; }
+
+.nav-group { margin-bottom: 20px; }
+.nav-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-muted); padding: 0 10px; margin-bottom: 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.9rem; color: var(--text-secondary);
+  transition: all var(--transition); user-select: none;
+}
+.nav-item:hover { background: var(--surface-hover); color: var(--text-primary); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+.nav-item .icon { font-size: 1.1rem; width: 22px; text-align: center; }
+.nav-item .badge {
+  margin-left: auto; background: var(--accent); color: #fff;
+  font-size: 0.7rem; padding: 1px 7px; border-radius: 99px; font-weight: 600;
+}
+
+/* ===================== Main ===================== */
+.main {
+  flex: 1; display: flex; flex-direction: column; overflow-y: auto;
+  padding: 28px 32px; min-height: 100vh;
+}
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px;
+}
+.header h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+.header .date {
+  font-size: 0.9rem; color: var(--text-secondary);
+  background: var(--surface); padding: 6px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+/* ===================== Cards ===================== */
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  box-shadow: var(--shadow-sm); transition: all var(--transition);
+}
+.card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 14px;
+}
+.card-title { font-size: 0.95rem; font-weight: 600; }
+
+/* ===================== Stat Cards ===================== */
+.stat-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 20px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+  box-shadow: var(--shadow-sm); transition: all var(--transition);
+}
+.stat-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.stat-card .stat-value { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat-card .stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+.stat-card .stat-icon { font-size: 1.5rem; margin-bottom: 6px; }
+
+/* ===================== Task List ===================== */
+.task-list { list-style: none; }
+.task-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  transition: all var(--transition); cursor: pointer;
+}
+.task-item:hover { background: var(--surface-hover); }
+.task-item.completed .task-title { text-decoration: line-through; color: var(--text-muted); opacity: 0.6; }
+.task-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border); cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.task-check:hover { border-color: var(--accent); }
+.task-item.completed .task-check {
+  background: var(--success); border-color: var(--success);
+}
+.task-check::after {
+  content: "✓"; color: #fff; font-size: 0.7rem; opacity: 0;
+  transition: opacity var(--transition);
+}
+.task-item.completed .task-check::after { opacity: 1; }
+.task-title { flex: 1; font-size: 0.9rem; }
+.task-priority {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.task-priority.high { background: var(--danger); }
+.task-priority.medium { background: var(--warning); }
+.task-priority.low { background: var(--text-muted); }
+.task-tag {
+  font-size: 0.7rem; padding: 2px 8px; border-radius: 99px;
+  background: var(--accent-light); color: var(--accent); flex-shrink: 0;
+}
+.task-actions { display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition); }
+.task-item:hover .task-actions { opacity: 1; }
+.task-btn {
+  width: 26px; height: 26px; border-radius: var(--radius-sm); border: none;
+  background: transparent; cursor: pointer; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); transition: all var(--transition);
+}
+.task-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+.task-btn.delete:hover { background: var(--danger-bg); color: var(--danger); }
+
+.subtasks { margin-left: 32px; }
+
+/* ===================== Add Task Input ===================== */
+.add-task-row {
+  display: flex; gap: 8px; padding: 8px 12px;
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  transition: all var(--transition);
+}
+.add-task-row:focus-within { border-color: var(--accent); border-style: solid; }
+.add-task-input {
+  flex: 1; border: none; background: transparent;
+  font-size: 0.9rem; color: var(--text-primary); outline: none;
+  font-family: var(--font);
+}
+.add-task-input::placeholder { color: var(--text-muted); }
+.add-task-priority {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 4px 8px; font-size: 0.8rem; background: var(--surface);
+  color: var(--text-secondary); cursor: pointer; font-family: var(--font);
+}
+.add-task-btn {
+  background: var(--accent); color: #fff; border: none;
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; cursor: pointer; font-weight: 600;
+  transition: all var(--transition); font-family: var(--font);
+}
+.add-task-btn:hover { opacity: 0.85; transform: scale(1.02); }
+
+/* ===================== Habits ===================== */
+.habit-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--border);
+  margin-bottom: 8px; transition: all var(--transition);
+}
+.habit-row:hover { box-shadow: var(--shadow); }
+.habit-dot {
+  width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.habit-info { flex: 1; }
+.habit-name { font-weight: 600; font-size: 0.9rem; }
+.habit-streak { font-size: 0.75rem; color: var(--text-secondary); }
+.habit-streak strong { color: var(--accent); }
+.habit-checkin {
+  padding: 6px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 0.85rem;
+  transition: all var(--transition); font-family: var(--font); font-weight: 500;
+}
+.habit-checkin:hover { border-color: var(--accent); color: var(--accent); }
+.habit-checkin.done { background: var(--success); color: #fff; border-color: var(--success); }
+
+/* ===================== Charts ===================== */
+.chart-container {
+  position: relative; width: 100%;
+}
+.chart-container canvas { width: 100% !important; }
+
+.charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+.heatmap-grid { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.heatmap-row { display: flex; align-items: center; gap: 8px; }
+.heatmap-label { font-size: 0.8rem; width: 70px; flex-shrink: 0; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heatmap-cells { display: flex; gap: 3px; }
+.heatmap-cell {
+  width: 14px; height: 14px; border-radius: 2px;
+  background: var(--border); transition: all var(--transition);
+}
+.heatmap-cell.l1 { background: var(--accent); opacity: 0.3; }
+.heatmap-cell.l2 { background: var(--accent); opacity: 0.5; }
+.heatmap-cell.l3 { background: var(--accent); opacity: 0.7; }
+.heatmap-cell.l4 { background: var(--accent); opacity: 0.9; }
+
+/* ===================== AI Panel ===================== */
+.ai-fab {
+  position: fixed; bottom: 28px; right: 32px;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); color: #fff; border: none;
+  box-shadow: var(--shadow-lg); cursor: pointer;
+  font-size: 1.5rem; display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition); z-index: 100;
+}
+.ai-fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px var(--accent-glow); }
+
+.ai-panel {
+  position: fixed; bottom: 92px; right: 32px;
+  width: 380px; height: 480px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg); display: none; flex-direction: column;
+  overflow: hidden; z-index: 99; transition: all var(--transition);
+}
+.ai-panel.open { display: flex; }
+.ai-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  font-weight: 600; font-size: 0.9rem;
+}
+.ai-panel-close { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem; padding: 4px; }
+.ai-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ai-msg {
+  max-width: 85%; padding: 10px 14px; border-radius: var(--radius);
+  font-size: 0.85rem; line-height: 1.5; animation: fadeIn 0.2s ease;
+}
+.ai-msg.user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.ai-msg.assistant { background: var(--surface-hover); align-self: flex-start; border-bottom-left-radius: 4px; }
+.ai-panel-input-row { display: flex; padding: 10px 14px; border-top: 1px solid var(--border); gap: 8px; }
+.ai-panel-input {
+  flex: 1; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 8px 12px; font-size: 0.85rem; font-family: var(--font);
+  background: var(--bg); color: var(--text-primary); outline: none;
+}
+.ai-panel-input:focus { border-color: var(--accent); }
+.ai-panel-send {
+  background: var(--accent); color: #fff; border: none;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  cursor: pointer; font-weight: 600; font-size: 0.85rem; font-family: var(--font);
+}
+.ai-quick-btns { display: flex; gap: 6px; padding: 8px 14px; flex-wrap: wrap; }
+.ai-quick-btn {
+  font-size: 0.75rem; padding: 4px 10px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-secondary); cursor: pointer; transition: all var(--transition);
+  font-family: var(--font);
+}
+.ai-quick-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ===================== Settings ===================== */
+.settings-section { margin-bottom: 28px; }
+.settings-section h3 { font-size: 1rem; margin-bottom: 12px; }
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 8px;
+}
+.setting-label { font-size: 0.9rem; }
+.setting-desc { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+.toggle-switch {
+  width: 44px; height: 24px; border-radius: 12px;
+  background: var(--border); cursor: pointer; position: relative;
+  transition: background var(--transition);
+}
+.toggle-switch.active { background: var(--accent); }
+.toggle-switch::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  transition: left var(--transition);
+}
+.toggle-switch.active::after { left: 23px; }
+
+.btn {
+  padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; font-size: 0.85rem;
+  font-family: var(--font); font-weight: 500; transition: all var(--transition);
+  color: var(--text-primary);
+}
+.btn:hover { background: var(--surface-hover); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { opacity: 0.85; }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger-bg); }
+
+.select-field {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 0.85rem; background: var(--surface);
+  color: var(--text-primary); cursor: pointer; font-family: var(--font);
+}
+.setting-key-row { display: flex; align-items: center; gap: 6px; }
+.btn-icon { padding: 6px 10px; line-height: 1; }
+
+/* ===================== Empty State ===================== */
+.empty-state {
+  text-align: center; padding: 48px 20px; color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.empty-state h3 { font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-state p { font-size: 0.85rem; }
+
+/* ===================== Modal ===================== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--radius-lg);
+  padding: 24px; width: 420px; max-width: 90vw;
+  box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+}
+.modal h3 { margin-bottom: 16px; font-size: 1.1rem; }
+.modal-input {
+  width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 0.9rem; font-family: var(--font);
+  background: var(--bg); color: var(--text-primary); margin-bottom: 10px;
+  outline: none;
+}
+.modal-input:focus { border-color: var(--accent); }
+.modal-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+.modal-row label { font-size: 0.85rem; color: var(--text-secondary); white-space: nowrap; }
+.modal-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 10px;
+}
+.modal-grid label {
+  display: block; font-size: 0.85rem; color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.modal-grid .modal-input, .modal-grid .select-field {
+  width: 100%; margin-bottom: 0; cursor: text;
+}
+.modal-grid .select-field { cursor: pointer; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+/* ===================== Tag filter ===================== */
+.filter-tags { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.filter-tag {
+  font-size: 0.8rem; padding: 4px 10px; border-radius: 99px;
+  border: 1px solid var(--border); cursor: pointer; transition: all var(--transition);
+  background: var(--surface); color: var(--text-secondary);
+}
+.filter-tag:hover { border-color: var(--accent); color: var(--accent); }
+.filter-tag.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ===================== View visibility ===================== */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ===================== Animations ===================== */
+/* ===================== Goals ===================== */
+.goal-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+  box-shadow: var(--shadow-sm); transition: all var(--transition);
+  cursor: pointer;
+}
+.goal-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.goal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.goal-title { font-weight: 600; font-size: 1rem; }
+.goal-deadline { font-size: 0.75rem; color: var(--text-muted); }
+.goal-deadline.overdue { color: var(--danger); font-weight: 600; }
+.goal-progress-bar {
+  width: 100%; height: 8px; background: var(--border);
+  border-radius: 99px; overflow: hidden; margin-bottom: 10px;
+}
+.goal-progress-fill {
+  height: 100%; border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--success));
+  transition: width 400ms ease;
+}
+.goal-milestones { display: flex; flex-direction: column; gap: 4px; }
+.goal-milestone {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; color: var(--text-secondary);
+  padding: 4px 0;
+}
+.goal-milestone .ms-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border); cursor: pointer; flex-shrink: 0;
+  transition: all var(--transition);
+  display: flex; align-items: center; justify-content: center;
+}
+.goal-milestone .ms-check:hover { border-color: var(--accent); }
+.goal-milestone.done .ms-check { background: var(--success); border-color: var(--success); }
+.goal-milestone.done .ms-check::after { content: "\2713"; color: #fff; font-size: 0.6rem; }
+.goal-milestone.done .ms-label { text-decoration: line-through; color: var(--text-muted); }
+.goal-actions { display: flex; gap: 6px; margin-top: 10px; }
+.goal-actions .btn { font-size: 0.78rem; padding: 4px 10px; }
+
+/* ===================== AI Chat View ===================== */
+.ai-chat-container {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 130px);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.ai-chat-messages {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.ai-chat-msg { max-width: 78%; animation: fadeIn 0.25s ease; }
+.ai-chat-msg.user { align-self: flex-end; }
+.ai-chat-msg.assistant { align-self: flex-start; }
+.ai-chat-content {
+  padding: 12px 16px; border-radius: var(--radius);
+  font-size: 0.9rem; line-height: 1.65; color: var(--text-primary);
+}
+.ai-chat-msg.user .ai-chat-content {
+  background: var(--accent); color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.ai-chat-msg.assistant .ai-chat-content {
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+.ai-chat-input-row {
+  display: flex; gap: 10px; padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.ai-chat-input {
+  flex: 1; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 14px;
+  font-size: 0.9rem; font-family: var(--font);
+  background: var(--bg); color: var(--text-primary);
+  outline: none; resize: none; min-height: 44px; max-height: 120px;
+  transition: border-color var(--transition);
+}
+.ai-chat-input:focus { border-color: var(--accent); }
+
+/* Action cards inside AI messages */
+.ai-action-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px;
+  margin: 8px 0; display: flex; align-items: center; gap: 12px;
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+.ai-action-card:hover { border-color: var(--accent); box-shadow: var(--shadow); }
+.ai-action-card .action-icon { font-size: 1.3rem; flex-shrink: 0; }
+.ai-action-card .action-info { flex: 1; min-width: 0; }
+.ai-action-card .action-title { font-weight: 600; font-size: 0.87rem; color: var(--text-primary); }
+.ai-action-card .action-desc { font-size: 0.76rem; color: var(--text-secondary); margin-top: 2px; }
+.ai-action-add {
+  background: var(--accent); color: #fff; border: none;
+  padding: 6px 14px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 0.82rem; font-weight: 600;
+  transition: all var(--transition); white-space: nowrap;
+  flex-shrink: 0;
+}
+.ai-action-add:hover { opacity: 0.85; transform: scale(1.03); }
+.ai-action-add.done { background: var(--success); pointer-events: none; }
+
+/* ---- Markdown rendering in AI chat ---- */
+.ai-chat-content .md-h1 { font-size: 1.16rem; font-weight: 700; margin: 10px 0 6px; color: var(--text-primary); }
+.ai-chat-content .md-h2 { font-size: 1.06rem; font-weight: 700; margin: 8px 0 5px; color: var(--text-primary); }
+.ai-chat-content .md-h3 { font-size: 0.96rem; font-weight: 600; margin: 6px 0 4px; color: var(--text-primary); }
+.ai-chat-content .md-h4 { font-size: 0.9rem; font-weight: 600; margin: 5px 0 3px; color: var(--text-secondary); }
+.ai-chat-content .md-p { margin: 4px 0; line-height: 1.7; }
+.ai-chat-content .md-list { margin: 4px 0 6px 1.25em; padding: 0; }
+.ai-chat-content .md-list li { margin: 3px 0; line-height: 1.65; }
+.ai-chat-content .md-code {
+  background: var(--surface-hover); border: 1px solid var(--border); border-radius: 4px;
+  padding: 1px 5px; font-family: var(--font-mono); font-size: 0.82em;
+}
+.ai-chat-content .md-hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.ai-chat-content b { font-weight: 700; }
+.ai-chat-content s { opacity: 0.65; }
+
+/* ---- action card click feedback ---- */
+.ai-action-card .action-icon { transition: transform 0.25s ease, color 0.25s ease; }
+.ai-action-card .action-icon.done { color: var(--success); animation: icon-pop 0.35s ease; }
+@keyframes icon-pop { 40% { transform: scale(1.4); } }
+
+/* ---- custom date picker ---- */
+.dp-input { cursor: pointer; user-select: none; -webkit-user-select: none; }
+.dp-panel {
+  position: absolute; z-index: 400; width: 260px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 12px;
+}
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.dp-title { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+.dp-nav {
+  border: none; background: none; cursor: pointer; font-size: 0.95rem;
+  padding: 3px 9px; border-radius: 6px; color: var(--text-primary); line-height: 1;
+}
+.dp-nav:hover { background: var(--surface-hover); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.dp-wd { text-align: center; font-size: 0.72rem; color: var(--text-muted); padding: 4px 0; user-select: none; }
+.dp-day {
+  text-align: center; padding: 5px 0; font-size: 0.82rem; border-radius: 6px;
+  cursor: pointer; border: none; background: none; color: var(--text-primary);
+  font-family: var(--font); user-select: none; -webkit-user-select: none;
+}
+.dp-day:hover { background: var(--surface-hover); }
+.dp-day.out { color: var(--text-muted); opacity: 0.5; }
+.dp-day.today { border: 1px solid var(--accent); }
+.dp-day.sel { background: var(--accent); color: #fff; border-color: var(--accent); }
+.dp-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.dp-foot .btn { font-size: 0.76rem; padding: 4px 12px; flex: 1; }
+
+/* ---- custom confirm dialog ---- */
+.confirm-modal { max-width: 380px; text-align: center; }
+.confirm-icon { font-size: 2rem; margin-bottom: 6px; }
+.confirm-modal h3 { margin-bottom: 8px; }
+.confirm-msg {
+  font-size: 0.88rem; color: var(--text-secondary); line-height: 1.7;
+  margin-bottom: 6px; user-select: none;
+}
+.confirm-modal .modal-actions { justify-content: center; gap: 12px; }
+
+/* Week View */
+.week-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 8px; }
+.week-day { background: var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 8px; min-height:120px; }
+.week-day.today { border-color: var(--accent); border-width:2px; }
+.week-day-header { text-align:center; font-weight:600; font-size:0.82rem; margin-bottom:6px; color:var(--text-secondary); }
+.week-day.today .week-day-header { color:var(--accent); }
+.week-day-tasks { display:flex; flex-direction:column; gap:3px; }
+.week-task { font-size:0.72rem; padding:2px 5px; border-radius:3px; background:var(--accent-light); cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; transition:all var(--transition); }
+.week-task:hover { background:var(--accent); color:#fff; }
+.week-task.done { opacity:0.4; text-decoration:line-through; }
+
+/* Search */
+.search-row { margin-bottom:12px; }
+.search-input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius); font-size:0.9rem; font-family:var(--font); background:var(--surface); color:var(--text-primary); outline:none; transition:border-color var(--transition); }
+.search-input:focus { border-color:var(--accent); }
+
+/* Task due date */
+.task-due { font-size:0.7rem; color:var(--text-muted); margin-left:6px; }
+.task-due.overdue { color:var(--danger); font-weight:600; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes checkBounce { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes strikeThrough { from { width: 0; } to { width: 100%; } }
+
+/* ===================== Plan View (双瀑布规划面板) ===================== */
+.plan-panel {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  height: calc(100vh - 130px);
+}
+.plan-col {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg); overflow: hidden;
+  display: flex; flex-direction: column;
+  box-shadow: var(--glass-shadow);
+}
+.plan-col-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  font-weight: 600; font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.plan-col-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+/* Month Calendar */
+.month-nav { display: flex; align-items: center; gap: 8px; }
+.month-nav button {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; padding: 3px 8px; font-size: 0.85rem; color: var(--text-secondary);
+}
+.month-nav button:hover { border-color: var(--accent); color: var(--accent); }
+.month-nav .month-label { font-weight: 700; min-width: 100px; text-align: center; }
+
+.month-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 2px; text-align: center;
+}
+.month-dow {
+  font-size: 0.7rem; color: var(--text-muted);
+  padding: 6px 0; font-weight: 600;
+}
+.month-day {
+  aspect-ratio: 1; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; transition: all var(--transition);
+  font-size: 0.85rem; position: relative; min-height: 36px;
+}
+.month-day:hover { background: var(--surface-hover); }
+.month-day.today { background: var(--accent-light); font-weight: 700; color: var(--accent); }
+.month-day.selected { background: var(--accent); color: #fff; font-weight: 700; }
+.month-day.other-month { color: var(--text-muted); opacity: 0.4; }
+.month-day .day-dots {
+  display: flex; gap: 2px; position: absolute; bottom: 4px;
+}
+.month-day .day-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+}
+.month-day .day-dot.high { background: var(--danger); }
+.month-day .day-dot.medium { background: var(--warning); }
+.month-day .day-dot.low { background: var(--text-muted); }
+
+/* Day Timeline */
+.timeline-back { margin-bottom: 8px; }
+.timeline-slots {
+  position: relative; min-height: 600px;
+  border-left: 2px solid var(--border);
+  margin-left: 48px;
+}
+.time-slot {
+  height: 28px; border-bottom: 1px solid var(--border);
+  position: relative; cursor: pointer; transition: background var(--transition);
+}
+.time-slot:hover { background: var(--surface-hover); }
+.time-slot .time-label {
+  position: absolute; left: -48px; top: -7px;
+  font-size: 0.65rem; color: var(--text-muted); width: 42px; text-align: right;
+}
+.time-slot.drop-target { background: var(--accent-light); border-color: var(--accent); }
+.time-slot.conflict { background: var(--danger-bg); }
+
+/* Task blocks on timeline */
+.timeline-block {
+  position: absolute; left: 2px; right: 4px;
+  background: var(--accent); color: #fff;
+  border-radius: 4px; padding: 3px 8px;
+  font-size: 0.72rem; overflow: hidden;
+  cursor: pointer; z-index: 2;
+  transition: opacity var(--transition);
+  display: flex; align-items: center; gap: 4px;
+}
+.timeline-block:hover { opacity: 0.85; }
+.timeline-block.done { opacity: 0.5; text-decoration: line-through; }
+.timeline-block.high { background: var(--danger); }
+.timeline-block.medium { background: var(--accent); }
+.timeline-block.low { background: var(--text-muted); }
+
+/* Timer */
+.timer-display {
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent);
+  font-weight: 600; min-width: 56px; text-align: right;
+}
+.timer-display.running { color: var(--success); animation: pulse 1.5s ease infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.task-duration {
+  font-size: 0.7rem; color: var(--text-muted);
+  background: var(--surface-hover); padding: 1px 6px; border-radius: 99px;
+}
+.task-drag-handle { cursor: grab; color: var(--text-muted); font-size: 0.8rem; }
+.task-drag-handle:active { cursor: grabbing; }
+
+/* Duration input */
+.duration-input {
+  width: 48px; border: 1px solid var(--border); border-radius: 3px;
+  padding: 1px 4px; font-size: 0.7rem; text-align: center;
+  background: var(--bg); color: var(--text-primary);
+  font-family: var(--font);
+}
+
+/* Goal schedule modal */
+.schedule-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; margin-bottom: 8px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.schedule-row .sch-main { flex: 1; min-width: 0; }
+.schedule-row .sch-title {
+  font-size: 0.88rem; font-weight: 600; color: var(--text-primary);
+  line-height: 1.5; word-break: break-word;
+}
+.schedule-row .sch-reason {
+  font-size: 0.75rem; color: var(--text-secondary);
+  margin-top: 3px; line-height: 1.6; word-break: break-word;
+}
+.schedule-row .dp-input {
+  width: 130px; flex-shrink: 0; text-align: center;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 6px 8px; font-size: 0.82rem; background: var(--surface);
+  color: var(--text-primary); font-family: var(--font);
+}
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed; pointer-events: none; z-index: 9999;
+  background: var(--accent); color: #fff; padding: 6px 12px;
+  border-radius: var(--radius-sm); font-size: 0.85rem;
+  box-shadow: var(--shadow-lg); opacity: 0.9;
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== Sidebar ===================== -->
+<aside class="sidebar" id="sidebar">
+  <button class="sidebar-toggle" onclick="App.toggleSidebar()" title="折叠侧栏">◀</button>
+  <div class="logo"><span>✦</span>PlanFlow</div>
+  <nav class="nav-group">
+    <div class="nav-label">概览</div>
+    <div class="nav-item active" data-view="plan"><span class="icon">📋</span>规划面板</div>
+    <div class="nav-item" data-view="dashboard"><span class="icon">📊</span>总览</div>
+    <div class="nav-item" data-view="today"><span class="icon">📅</span>今日<span class="badge" id="todayBadge">0</span></div>
+  </nav>
+  <nav class="nav-group">
+    <div class="nav-label">管理</div>
+    <div class="nav-item" data-view="tasks"><span class="icon">✅</span>待办</div>
+    <div class="nav-item" data-view="habits"><span class="icon">🔥</span>习惯</div>
+    <div class="nav-item" data-view="goals"><span class="icon">🎯</span>目标</div>
+  </nav>
+  <nav class="nav-group" style="margin-top: auto;">
+    <div class="nav-item" data-view="week"><span class="icon">📆</span>周视图</div>
+    <div class="nav-item" data-view="ai"><span class="icon">💬</span>AI</div>
+    <div class="nav-item" data-view="settings"><span class="icon">⚙️</span>设置</div>
+  </nav>
+</aside>
+
+<!-- ===================== Main Content ===================== -->
+<main class="main" id="mainContent">
+
+  <!-- Plan View (双瀑布规划面板) -->
+  <div class="view active" id="view-plan">
+    <div class="plan-panel">
+      <!-- Left: Calendar -->
+      <div class="plan-col" id="planCalendarCol">
+        <div class="plan-col-header" id="planCalHeader">
+          <span id="planCalTitle">📅 月历</span>
+          <div class="month-nav" id="monthNav" style="display:none;"></div>
+        </div>
+        <div class="plan-col-body" id="planCalBody"></div>
+      </div>
+      <!-- Right: Task Pool -->
+      <div class="plan-col" id="planTaskCol">
+        <div class="plan-col-header">
+          <span id="planTaskTitle">📋 待办池</span>
+          <span style="font-size:0.75rem;color:var(--text-muted);" id="planTaskDate"></span>
+        </div>
+        <div class="plan-col-body" id="planTaskBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard View -->
+  <div class="view" id="view-dashboard">
+    <div class="header">
+      <h1>📊 数据总览</h1>
+      <button class="btn btn-primary" style="margin-left:auto;margin-right:12px;" onclick="App.generateWeeklyReport()">📝 AI 周报</button>
+      <button class="btn" style="margin-right:12px;border-color:var(--accent);color:var(--accent);" onclick="App.generateEarningsReport()">🌟 今日收益</button>
+      <div class="date" id="headerDate"></div>
+    </div>
+    <div class="stat-grid" id="statCards"></div>
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-header"><div class="card-title">📈 本周完成趋势</div></div>
+        <div class="chart-container"><canvas id="chartTrend" height="180"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">🍩 任务分类占比</div></div>
+        <div class="chart-container"><canvas id="chartDonut" height="180"></canvas></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">🔥 习惯热力图（近4周）</div>
+        <button class="ai-quick-btn" onclick="App.aiQuick('分析我的习惯数据')">🤖 AI 分析</button>
+      </div>
+      <div class="heatmap-grid" id="heatmapGrid"></div>
+    </div>
+  </div>
+
+  <!-- Today View -->
+  <div class="view" id="view-today">
+    <div class="header">
+      <h1>📅 今日计划</h1>
+      <button class="btn btn-primary" style="margin-left:auto;margin-right:12px;" onclick="App.planTodaySchedule()">🕐 AI 排程</button>
+      <div class="date" id="todayDate"></div>
+    </div>
+    <div class="card" id="overdueCard" style="display:none;">
+      <div class="card-header"><div class="card-title" style="color:var(--danger);">⚠️ 逾期任务</div></div>
+      <ul class="task-list" id="overdueTaskList"></ul>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">待完成任务</div></div>
+      <ul class="task-list" id="todayTaskList"></ul>
+      <div class="add-task-row" style="margin-top:10px;">
+        <input class="add-task-input" id="todayAddInput" placeholder="添加今日任务..." onkeydown="if(event.key==='Enter')App.addTaskFromInput('todayAddInput','medium')">
+        <select class="add-task-priority" id="todayPriority">
+          <option value="medium">🟡 中</option>
+          <option value="high">🔴 高</option>
+          <option value="low">⚪ 低</option>
+        </select>
+        <button class="add-task-btn" onclick="App.addTaskFromInput('todayAddInput',document.getElementById('todayPriority').value)">添加</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">今日习惯</div></div>
+      <div id="todayHabits"></div>
+    </div>
+  </div>
+
+  <!-- Tasks View -->
+  <div class="view" id="view-tasks">
+    <div class="header">
+      <h1>✅ 全部待办</h1>
+      <div class="date" id="tasksDate"></div>
+    </div>
+    <div class="search-row"><input class="search-input" id="taskSearch" placeholder="🔍 搜索任务..." oninput="App.filterTasks()"></div>
+    <div class="filter-tags" id="filterTags">
+      <span class="filter-tag active" data-tag="all">全部</span>
+      <span class="filter-tag" data-tag="high">🔴 高优先</span>
+      <span class="filter-tag" data-tag="medium">🟡 中优先</span>
+      <span class="filter-tag" data-tag="low">⚪ 低优先</span>
+    </div>
+    <div class="card">
+      <ul class="task-list" id="allTaskList"></ul>
+      <div class="add-task-row" style="margin-top:10px;">
+        <input class="add-task-input" id="taskAddInput" placeholder="添加新任务..." onkeydown="if(event.key==='Enter')App.addTaskFromInput('taskAddInput','medium')">
+        <select class="add-task-priority" id="taskPriority">
+          <option value="medium">🟡 中</option>
+          <option value="high">🔴 高</option>
+          <option value="low">⚪ 低</option>
+        </select>
+        <button class="add-task-btn" onclick="App.addTaskFromInput('taskAddInput',document.getElementById('taskPriority').value)">添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Habits View -->
+  <div class="view" id="view-habits">
+    <div class="header">
+      <h1>🔥 习惯追踪</h1>
+      <button class="btn btn-primary" onclick="App.showHabitModal()">+ 新建习惯</button>
+    </div>
+    <div class="card" id="habitsList"></div>
+  </div>
+
+  <!-- Goals View -->
+  <div class="view" id="view-goals">
+    <div class="header">
+      <h1>🎯 长期目标</h1>
+      <button class="btn btn-primary" onclick="App.showGoalModal()">+ 新建目标</button>
+    </div>
+    <div id="goalsList"></div>
+  </div>
+
+  <!-- Week View -->
+  <div class="view" id="view-week">
+    <div class="header"><h1>📆 本周</h1><div class="date" id="weekRange"></div></div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- AI View -->  <!-- AI View -->
+  <div class="view" id="view-ai">
+    <div class="header">
+      <h1>💬 AI 助手</h1>
+      <div class="date" id="aiStatusBar">DeepSeek API</div>
+    </div>
+    <div class="ai-chat-container">
+      <div class="ai-chat-messages" id="aiChatMessages">
+        <div class="ai-chat-msg assistant">
+          <div class="ai-chat-content">你好！我是你的 AI 规划助手。我可以：<br><br>
+          📋 <b>分析你的情况</b>并制定计划<br>
+          📝 <b>帮你创建任务</b>和日程安排<br>
+          🎯 <b>拆解长期目标</b>为可执行步骤<br><br>
+          直接告诉我你想做什么，我会帮你规划并写入日程。</div>
+        </div>
+      </div>
+      <div class="ai-chat-input-row">
+        <textarea class="ai-chat-input" id="aiChatInput" placeholder="告诉 AI 你想做什么..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();App.aiChatSend();}"></textarea>
+        <button class="btn btn-primary" onclick="App.aiChatSend()">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings View -->
+  <div class="view" id="view-settings">
+    <div class="header"><h1>⚙️ 设置</h1></div>
+    <div class="settings-section">
+      <h3>外观</h3>
+      <div class="setting-row">
+        <div><div class="setting-label">深色模式</div><div class="setting-desc">切换深色/浅色主题</div></div>
+        <div class="toggle-switch" id="darkToggle" onclick="App.toggleTheme()"></div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>AI 助手</h3>
+      <div class="setting-row">
+        <div><div class="setting-label">🤖 DeepSeek API</div><div class="setting-desc" id="aiStatus">未配置</div></div>
+        <button class="btn" onclick="App.testAI()">测试连接</button>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">API Key</div><div class="setting-desc">DeepSeek / OpenAI 兼容密钥</div></div>
+        <div class="setting-key-row">
+          <input class="select-field" type="password" style="width:220px;" placeholder="sk-..." id="apiKeyInput" autocomplete="new-password" spellcheck="false" onchange="App.saveApiKey(this.value)">
+          <button class="btn btn-icon" type="button" id="apiKeyToggleBtn" title="显示 API Key" onclick="App.toggleApiKeyVisibility()">👁️</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">Base URL</div><div class="setting-desc">API 地址（默认 DeepSeek）</div></div>
+        <input class="select-field" style="width:300px;" placeholder="https://api.deepseek.com/v1" id="apiBaseInput" onchange="App.saveApiBase(this.value)">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">模型</div><div class="setting-desc">模型名称</div></div>
+        <input class="select-field" style="width:220px;" placeholder="deepseek-chat" id="apiModelInput" onchange="App.saveApiModel(this.value)">
+      </div>
+    </div>
+    <div class="settings-section">
+      <h3>数据管理</h3>
+      <div class="setting-row">
+        <div><div class="setting-label">导出数据</div><div class="setting-desc">下载 JSON 备份文件</div></div>
+        <button class="btn" onclick="App.exportData()">📥 导出</button>
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">导入数据</div><div class="setting-desc">从 JSON 文件恢复</div></div>
+        <button class="btn" onclick="document.getElementById('importFile').click()">📤 导入</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="App.importData(this.files[0])">
+      </div>
+      <div class="setting-row">
+        <div><div class="setting-label">清空所有数据</div><div class="setting-desc">⚠️ 此操作不可恢复</div></div>
+        <button class="btn btn-danger" onclick="App.clearAllData()">🗑 清空</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ===================== AI FAB & Panel ===================== -->
+<button class="ai-fab" id="aiFab" onclick="App.navigate('ai')" title="AI 助手">💬</button>
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-panel-header">
+    🤖 AI 规划助手
+    <button class="ai-panel-close" onclick="App.toggleAIPanel()">✕</button>
+  </div>
+  <div class="ai-quick-btns" id="aiQuickBtns">
+    <button class="ai-quick-btn" onclick="App.aiQuick('帮我安排明天的计划')">📅 安排明日</button>
+    <button class="ai-quick-btn" onclick="App.aiQuick('分析我本周的效率')">📊 本周分析</button>
+    <button class="ai-quick-btn" onclick="App.aiQuick('给我一些习惯养成的建议')">💡 习惯建议</button>
+    <button class="ai-quick-btn" onclick="App.aiQuick('总结我最近的表现')">📝 近期总结</button>
+    <button class="ai-quick-btn" style="background:var(--accent);color:#fff;" onclick="App.aiPlan()">📋 AI 规划</button>
+  </div>
+  <div class="ai-messages" id="aiMessages">
+    <div class="ai-msg assistant">你好！我是你的 AI 规划助手。我可以帮你安排日程、分析习惯、拆解目标。试试上面的快捷按钮，或直接输入你的需求 👋</div>
+  </div>
+  <div class="ai-panel-input-row">
+    <input class="ai-panel-input" id="aiInput" placeholder="输入你的需求..." onkeydown="if(event.key==='Enter')App.aiSend()">
+    <button class="ai-panel-send" onclick="App.aiSend()">发送</button>
+  </div>
+</div>
+
+<!-- ===================== Habit Modal ===================== -->
+<div class="modal-overlay" id="habitModalOverlay">
+  <div class="modal">
+    <h3 id="habitModalTitle">新建习惯</h3>
+    <input class="modal-input" id="habitNameInput" placeholder="习惯名称（如：晨间阅读）">
+    <input class="modal-input" id="habitDescInput" placeholder="描述（可选）">
+    <div class="modal-row">
+      <label>频率</label>
+      <select class="select-field" id="habitFreqInput">
+        <option value="daily">每天</option>
+        <option value="weekly">每周</option>
+      </select>
+      <label>颜色</label>
+      <input type="color" id="habitColorInput" value="#4f46e5" style="width:36px;height:32px;border:none;cursor:pointer;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeHabitModal()">取消</button>
+      <button class="btn btn-primary" id="habitModalSaveBtn" onclick="App.saveHabit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== Task Edit Modal ===================== -->
+<div class="modal-overlay" id="taskModalOverlay">
+  <div class="modal">
+    <h3>编辑任务</h3>
+    <input class="modal-input" id="taskEditTitle" placeholder="任务标题">
+    <textarea class="modal-input" id="taskEditNotes" placeholder="备注..." style="min-height:60px;resize:vertical;"></textarea>
+    <div class="modal-grid">
+      <div>
+        <label>优先级</label>
+        <select class="select-field" id="taskEditPriority">
+          <option value="high">🔴 高</option>
+          <option value="medium">🟡 中</option>
+          <option value="low">⚪ 低</option>
+        </select>
+      </div>
+      <div>
+        <label>到期</label>
+        <input type="text" class="select-field dp-input" id="taskEditDue" placeholder="选择日期" readonly onclick="event.stopPropagation();App.toggleDatePicker('taskEditDue')">
+      </div>
+      <div>
+        <label>时长（分钟）</label>
+        <input class="modal-input" id="taskEditDur" placeholder="30">
+      </div>
+      <div>
+        <label>标签</label>
+        <input class="modal-input" id="taskEditTag" placeholder="工作,个人">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeTaskModal()">取消</button>
+      <button class="btn btn-primary" id="taskModalSaveBtn" onclick="App.saveTaskEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =================================================================================
+   PlanFlow — 个人计划管理平台  v2.0
+   Pure HTML/CSS/JS, zero dependencies, IndexedDB storage
+   ================================================================================= */
+
+// ==================== UUID Generator ====================
+function uuid() { return crypto.randomUUID ? crypto.randomUUID() : 'xxxx-xxxx-xxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16)); }
+
+// ==================== Date Helpers ====================
+const today = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+};
+const now = () => new Date().toISOString();
+const fmtDate = (d) => new Date(d).toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+const weekStart = () => { const d=new Date(); d.setDate(d.getDate()-d.getDay()+1); return d.toISOString().slice(0,10); };
+const daysBetween = (a,b) => Math.floor((new Date(b)-new Date(a))/(86400000));
+
+// ==================== Database ====================
+class Database {
+  constructor() {
+    this.db = null;
+  }
+  async open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('planflow', 3);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('tasks')) db.createObjectStore('tasks', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('habits')) db.createObjectStore('habits', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('goals')) db.createObjectStore('goals', { keyPath: 'id' });
+      };
+      req.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+      req.onerror = (e) => {
+        console.error('DB open error:', e.target.error);
+        if (e.target.error && e.target.error.name === 'VersionError') {
+          // DB version mismatch — delete and retry
+          indexedDB.deleteDatabase('planflow');
+          reject(new Error('数据库版本冲突，请刷新页面重试'));
+        } else {
+          reject(e.target.error || new Error('数据库打开失败'));
+        }
+      };
+      req.onblocked = () => reject(new Error('数据库被占用，请关闭其他 PlanFlow 标签页'));
+    });
+  }
+  getAll(store) {
+    return new Promise((resolve) => {
+      const tx = this.db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+  }
+  get(store, key) {
+    return new Promise((resolve) => {
+      const tx = this.db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(key);
+      req.onsuccess = () => resolve(req.result);
+    });
+  }
+  put(store, item) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(item);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+  delete(store, key) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+  async clear(store) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  }
+}
+
+// ==================== App ====================
+class AppClass {
+  constructor() {
+    this.db = new Database();
+    this.tasks = [];
+    this.habits = [];
+    this.goals = [];
+    this.currentView = 'plan';
+    this.editingTaskId = null;
+    this.editingHabitId = null;
+    this.filterTag = 'all';
+    this.theme = 'light';
+    // Plan view state
+    this.planYear = new Date().getFullYear();
+    this.planMonth = new Date().getMonth();
+    this.planMode = 'month';
+    this.planSelectedDate = today();
+    this.activeTimerId = null;
+    this.timerInterval = null;
+    this.timerSeconds = 0;
+    this.dragTaskId = null;
+  }
+
+  async init() {
+    try {
+      await this.db.open();
+      await this.loadData();
+      this._updateTimeOfDay();
+      setInterval(() => this._updateTimeOfDay(), 60000);
+      // Restore sidebar state
+      if (localStorage.getItem('planflow-sidebar') === '1') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.querySelector('.sidebar-toggle').textContent = '▶';
+      }
+      this.setupNav();
+      this.setupFilters();
+      this.renderAll();
+      this.updateDates();
+      this.applyTheme();
+    } catch (e) {
+      console.error('PlanFlow init failed:', e);
+      document.body.innerHTML = `<div style="padding:40px;text-align:center;font-family:sans-serif;">
+        <h2>⚠️ 初始化失败</h2>
+        <p>${e.message}</p>
+        <button onclick="localStorage.clear();indexedDB.deleteDatabase('planflow');location.reload()" 
+          style="margin-top:16px;padding:10px 24px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:15px;">
+          🔄 重置数据并重试</button>
+      </div>`;
+    }
+  }
+
+  async loadData() {
+    this.tasks = await this.db.getAll('tasks');
+    this.habits = await this.db.getAll('habits');
+    this.goals = await this.db.getAll('goals');
+    const themeSetting = await this.db.get('settings', 'theme');
+    this.theme = themeSetting?.value || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const apiKeySetting = await this.db.get('settings', 'apiKey');
+    if (apiKeySetting) document.getElementById('apiKeyInput').value = apiKeySetting.value;
+    const apiBaseSetting = await this.db.get('settings', 'apiBase');
+    if (apiBaseSetting) document.getElementById('apiBaseInput').value = apiBaseSetting.value;
+    const apiModelSetting = await this.db.get('settings', 'apiModel');
+    if (apiModelSetting) document.getElementById('apiModelInput').value = apiModelSetting.value;
+  }
+
+  // ==================== Navigation ====================
+  setupNav() {
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => this.navigate(item.dataset.view));
+    });
+  }
+
+  navigate(view) {
+    this.currentView = view;
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(`view-${view}`)?.classList.add('active');
+    this.renderAll();
+    this.updateDates();
+  }
+
+  setupFilters() {
+    document.querySelectorAll('.filter-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+        tag.classList.add('active');
+        this.filterTag = tag.dataset.tag;
+        this.renderTaskList();
+      });
+    });
+  }
+
+  // ==================== Rendering ====================
+  renderAll() {
+    this.renderGoals();
+    this.renderWeekView();
+    if (this.currentView === 'plan') { this.renderPlanView(); return; }
+    this.renderTaskList();
+    this.renderToday();
+    this.renderHabits();
+    this.renderDashboard();
+    this.renderBadge();
+  }
+
+  renderBadge() {
+    const todayStr = today();
+    const count = this.tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate <= todayStr)).length;
+    document.getElementById('todayBadge').textContent = count;
+  }
+
+  // ==================== Tasks ====================
+  async addTask(title, priority = 'medium', parentId = null, opts = {}) {
+    const task = {
+      id: uuid(),
+      title,
+      notes: '',
+      completed: false,
+      priority,
+      tags: [],
+      dueDate: opts.dueDate || null,
+      dueTime: opts.dueTime || null,
+      goalId: null,
+      parentId,
+      order: this.tasks.filter(t => t.parentId === parentId).length,
+      createdAt: now(),
+      completedAt: null,
+      estimatedDuration: opts.estimatedDuration || 0,
+      timeSpent: 0
+    };
+    this.tasks.push(task);
+    await this.db.put('tasks', task);
+    this.renderAll();
+  }
+
+  async addTaskFromInput(inputId, priority) {
+    const input = document.getElementById(inputId);
+    const title = input.value.trim();
+    if (!title) return;
+    await this.addTask(title, priority);
+    input.value = '';
+    input.focus();
+  }
+
+  async toggleTask(id) {
+    const task = this.tasks.find(t => t.id === id);
+    if (!task) return;
+    task.completed = !task.completed;
+    task.completedAt = task.completed ? now() : null;
+    await this.db.put('tasks', task);
+    // If parent completed, complete all subtasks
+    if (task.completed) {
+      const subtasks = this.tasks.filter(t => t.parentId === id && !t.completed);
+      for (const st of subtasks) { st.completed = true; st.completedAt = now(); await this.db.put('tasks', st); }
+    }
+    if (task.goalId) this._updateGoalProgress(task.goalId);
+    this.renderAll();
+  }
+
+  editTask(id) {
+    const task = this.tasks.find(t => t.id === id);
+    if (!task) return;
+    this.editingTaskId = id;
+    document.getElementById('taskEditTitle').value = task.title;
+    document.getElementById('taskEditNotes').value = task.notes || '';
+    document.getElementById('taskEditPriority').value = task.priority;
+    document.getElementById('taskEditDue').value = task.dueDate || '';
+    document.getElementById('taskEditDur').value = task.estimatedDuration || '';
+    document.getElementById('taskEditTag').value = (task.tags || []).join(',');
+    document.getElementById('taskModalOverlay').classList.add('open');
+  }
+
+  async saveTaskEdit() {
+    const task = this.tasks.find(t => t.id === this.editingTaskId);
+    if (!task) return;
+    task.title = document.getElementById('taskEditTitle').value.trim();
+    task.notes = document.getElementById('taskEditNotes').value.trim();
+    task.priority = document.getElementById('taskEditPriority').value;
+    task.dueDate = document.getElementById('taskEditDue').value || null;
+    task.estimatedDuration = parseInt(document.getElementById('taskEditDur').value) || 0;
+    task.tags = document.getElementById('taskEditTag').value.split(',').map(s => s.trim()).filter(Boolean);
+    await this.db.put('tasks', task);
+    this.closeTaskModal();
+    this.renderAll();
+  }
+
+  closeTaskModal() {
+    document.getElementById('taskModalOverlay').classList.remove('open');
+    this.editingTaskId = null;
+  }
+
+  async deleteTask(id) {
+    if (!(await this.confirmDialog('确定删除这个任务吗？', { danger: true, title: '删除任务', confirmText: '删除' }))) return;
+    // Also delete subtasks
+    const idsToDelete = new Set([id]);
+    const findSubtasks = (pid) => {
+      this.tasks.filter(t => t.parentId === pid).forEach(st => { idsToDelete.add(st.id); findSubtasks(st.id); });
+    };
+    findSubtasks(id);
+    for (const tid of idsToDelete) {
+      await this.db.delete('tasks', tid);
+    }
+    this.tasks = this.tasks.filter(t => !idsToDelete.has(t.id));
+    this.renderAll();
+  }
+
+  async addSubtask(parentId) {
+    const title = prompt('子任务名称：');
+    if (!title) return;
+    await this.addTask(title.trim(), 'medium', parentId);
+  }
+
+  async moveTask(id, direction) {
+    const task = this.tasks.find(t => t.id === id);
+    if (!task) return;
+    const siblings = this.tasks
+      .filter(t => t.parentId === task.parentId)
+      .sort((a, b) => a.order - b.order);
+    const idx = siblings.findIndex(t => t.id === id);
+    const swapIdx = idx + direction;
+    if (swapIdx < 0 || swapIdx >= siblings.length) return;
+    [siblings[idx].order, siblings[swapIdx].order] = [siblings[swapIdx].order, siblings[idx].order];
+    await this.db.put('tasks', siblings[idx]);
+    await this.db.put('tasks', siblings[swapIdx]);
+    this.renderAll();
+  }
+
+  renderTaskList() {
+    const container = document.getElementById('allTaskList');
+    const todayContainer = document.getElementById('todayTaskList');
+    // All tasks view
+    let filtered = this.tasks.filter(t => !t.parentId);
+    if (this._searchQuery) { const q=this._searchQuery; filtered=filtered.filter(t=>(t.title+t.notes+(t.tags||[]).join()).toLowerCase().includes(q)); }
+    if (this.filterTag !== 'all') {
+      filtered = filtered.filter(t => t.priority === this.filterTag);
+    }
+    filtered.sort((a, b) => a.order - b.order);
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><h3>暂无任务</h3><p>在上方输入框添加你的第一个任务吧</p></div>';
+    } else {
+      container.innerHTML = filtered.map(t => this.taskHTML(t)).join('');
+    }
+    // Today view: overdue first, then today's tasks
+    const todayStr = today();
+    const overdueTasks = this.tasks.filter(t => !t.parentId && !t.completed && t.dueDate && t.dueDate < todayStr);
+    const overdueCard = document.getElementById('overdueCard');
+    const overdueContainer = document.getElementById('overdueTaskList');
+    if (overdueContainer && overdueCard) {
+      if (overdueTasks.length > 0) {
+        overdueCard.style.display = '';
+        overdueContainer.innerHTML = overdueTasks.map(t => this.taskHTML(t)).join('');
+      } else {
+        overdueCard.style.display = 'none';
+        overdueContainer.innerHTML = '';
+      }
+    }
+    const todayTasks = this.tasks.filter(t => !t.parentId && (!t.dueDate || t.dueDate === todayStr));
+    todayTasks.sort((a, b) => a.order - b.order);
+    if (todayTasks.length === 0) {
+      todayContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">☀️</div><h3>今天没有任务</h3><p>享受轻松的一天，或添加新任务</p></div>';
+    } else {
+      todayContainer.innerHTML = todayTasks.map(t => this.taskHTML(t)).join('');
+    }
+  }
+
+  taskHTML(task) {
+    const completed = task.completed ? 'completed' : '';
+    const priorityEmoji = { high: '🔴', medium: '🟡', low: '⚪' };
+    const subtasks = this.tasks.filter(t => t.parentId === task.id).sort((a,b) => a.order - b.order);
+    const tagsHTML = (task.tags || []).map(tag => `<span class="task-tag">${tag}</span>`).join('');
+    return `
+      <li class="task-item ${completed}" data-id="${task.id}">
+        <div class="task-check" onclick="event.stopPropagation(); App.toggleTask('${task.id}')"></div>
+        <span class="task-title" onclick="App.editTask('${task.id}')">${this.esc(task.title)}${task.dueDate?' <span class="task-due'+(task.dueDate<today()&&!task.completed?' overdue':'')+'">📅 '+task.dueDate.slice(5)+'</span>':''}</span>
+        ${tagsHTML}
+        <span class="task-priority ${task.priority}"></span>
+        <div class="task-actions">
+          ${!task.parentId ? `<button class="task-btn" title="添加子任务" onclick="event.stopPropagation(); App.addSubtask('${task.id}')">＋</button>` : ''}
+          <button class="task-btn" title="上移" onclick="event.stopPropagation(); App.moveTask('${task.id}', -1)">↑</button>
+          <button class="task-btn" title="下移" onclick="event.stopPropagation(); App.moveTask('${task.id}', 1)">↓</button>
+          <button class="task-btn delete" title="删除" onclick="event.stopPropagation(); App.deleteTask('${task.id}')">🗑</button>
+        </div>
+      </li>
+      ${subtasks.length > 0 ? `<ul class="subtasks">${subtasks.map(st => this.taskHTML(st)).join('')}</ul>` : ''}
+    `;
+  }
+
+  // ==================== Habits ====================
+  renderHabits() {
+    this._renderHabitsList('habitsList', false);
+    this._renderHabitsList('todayHabits', true);
+  }
+
+  _renderHabitsList(containerId, todayOnly) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (this.habits.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔥</div><h3>还没有习惯</h3><p>去习惯页面添加你的第一个习惯吧</p></div>';
+      return;
+    }
+    container.innerHTML = this.habits.map(h => {
+      const checkedToday = h.checkins?.[today()] || false;
+      const doneClass = checkedToday ? 'done' : '';
+      const btnText = checkedToday ? '✓ 已完成' : '打卡';
+      return `
+        <div class="habit-row">
+          <div class="habit-dot" style="background:${h.color}"></div>
+          <div class="habit-info">
+            <div class="habit-name">${this.esc(h.title)}</div>
+            <div class="habit-streak">🔥 连续 <strong>${h.currentStreak || 0}</strong> 天 · 最佳 <strong>${h.bestStreak || 0}</strong> 天</div>
+          </div>
+          ${todayOnly ? `
+            <button class="habit-checkin ${doneClass}" onclick="App.habitCheckin('${h.id}')">${btnText}</button>
+          ` : `
+            <button class="btn" style="margin-right:6px" onclick="App.habitCheckin('${h.id}')">${btnText}</button>
+            <button class="btn" onclick="App.editHabit('${h.id}')">✎</button>
+            <button class="btn" style="color:var(--danger)" onclick="App.deleteHabit('${h.id}')">🗑</button>
+          `}
+        </div>
+      `;
+    }).join('');
+  }
+
+  async habitCheckin(id) {
+    const habit = this.habits.find(h => h.id === id);
+    if (!habit) return;
+    if (!habit.checkins) habit.checkins = {};
+    const todayStr = today();
+    if (habit.checkins[todayStr]) {
+      // Undo checkin
+      delete habit.checkins[todayStr];
+    } else {
+      habit.checkins[todayStr] = true;
+    }
+    // Recalculate streak
+    this.calcStreak(habit);
+    await this.db.put('habits', habit);
+    this.renderAll();
+  }
+
+  calcStreak(habit) {
+    let streak = 0;
+    const d = new Date();
+    // Check today first
+    const todayStr = today();
+    if (!habit.checkins?.[todayStr]) { habit.currentStreak = 0; return; }
+    streak = 1;
+    d.setDate(d.getDate() - 1);
+    while (true) {
+      const ds = d.toISOString().slice(0,10);
+      if (habit.checkins?.[ds]) { streak++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    habit.currentStreak = streak;
+    if (streak > (habit.bestStreak || 0)) habit.bestStreak = streak;
+  }
+
+  showHabitModal() {
+    this.editingHabitId = null;
+    document.getElementById('habitModalTitle').textContent = '新建习惯';
+    document.getElementById('habitNameInput').value = '';
+    document.getElementById('habitDescInput').value = '';
+    document.getElementById('habitFreqInput').value = 'daily';
+    document.getElementById('habitColorInput').value = '#4f46e5';
+    document.getElementById('habitModalSaveBtn').textContent = '保存';
+    document.getElementById('habitModalOverlay').classList.add('open');
+  }
+
+  editHabit(id) {
+    const habit = this.habits.find(h => h.id === id);
+    if (!habit) return;
+    this.editingHabitId = id;
+    document.getElementById('habitModalTitle').textContent = '编辑习惯';
+    document.getElementById('habitNameInput').value = habit.title;
+    document.getElementById('habitDescInput').value = habit.description || '';
+    document.getElementById('habitFreqInput').value = habit.frequency || 'daily';
+    document.getElementById('habitColorInput').value = habit.color || '#4f46e5';
+    document.getElementById('habitModalSaveBtn').textContent = '更新';
+    document.getElementById('habitModalOverlay').classList.add('open');
+  }
+
+  async saveHabit() {
+    const title = document.getElementById('habitNameInput').value.trim();
+    if (!title) return;
+    const data = {
+      id: this.editingHabitId || uuid(),
+      title,
+      description: document.getElementById('habitDescInput').value.trim(),
+      frequency: document.getElementById('habitFreqInput').value,
+      color: document.getElementById('habitColorInput').value,
+      currentStreak: 0,
+      bestStreak: 0,
+      checkins: {},
+      createdAt: now()
+    };
+    if (this.editingHabitId) {
+      const existing = this.habits.find(h => h.id === this.editingHabitId);
+      if (existing) { data.checkins = existing.checkins; data.currentStreak = existing.currentStreak; data.bestStreak = existing.bestStreak; data.createdAt = existing.createdAt; }
+    }
+    await this.db.put('habits', data);
+    if (this.editingHabitId) {
+      const idx = this.habits.findIndex(h => h.id === this.editingHabitId);
+      if (idx > -1) this.habits[idx] = data;
+    } else {
+      this.habits.push(data);
+    }
+    this.closeHabitModal();
+    this.renderAll();
+  }
+
+  closeHabitModal() {
+    document.getElementById('habitModalOverlay').classList.remove('open');
+    this.editingHabitId = null;
+  }
+
+  async deleteHabit(id) {
+    if (!(await this.confirmDialog('确定删除这个习惯吗？', { danger: true, title: '删除习惯', confirmText: '删除' }))) return;
+    await this.db.delete('habits', id);
+    this.habits = this.habits.filter(h => h.id !== id);
+    this.renderAll();
+  }
+
+  // ==================== Goals ====================
+  renderGoals() {
+    const container = document.getElementById('goalsList');
+    if (!container) return;
+    if (this.goals.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div><h3>还没有目标</h3><p>设定一个长期目标，拆解成里程碑，一步步实现它</p></div>';
+      return;
+    }
+    container.innerHTML = this.goals.map(g => this.goalCardHTML(g)).join('');
+  }
+
+  goalCardHTML(goal) {
+    const pct = this.goalProgress(goal);
+    const ms = (goal.milestones || []);
+    const doneCount = ms.filter(m => m.completed).length;
+    const deadlineStr = goal.deadline ? new Date(goal.deadline).toLocaleDateString('zh-CN') : '';
+    const overdue = goal.deadline && new Date(goal.deadline) < new Date() && pct < 100;
+    return `
+      <div class="goal-card" onclick="App.editGoal('${goal.id}')">
+        <div class="goal-header">
+          <div class="goal-title">${goal.color ? `<span style="color:${goal.color};margin-right:6px;">●</span>` : ''}${this.esc(goal.title)}</div>
+          <div class="goal-deadline${overdue ? ' overdue' : ''}">${deadlineStr ? '📅 ' + deadlineStr : ''}</div>
+        </div>
+        ${goal.description ? `<div style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:8px;">${this.esc(goal.description)}</div>` : ''}
+        <div class="goal-progress-bar">
+          <div class="goal-progress-fill" style="width:${pct}%"></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:${ms.length ? '8px' : '0'};">${doneCount}/${ms.length} 里程碑 · ${pct}%</div>
+        ${ms.length > 0 ? `
+        <div class="goal-milestones">
+          ${ms.map((m, i) => `
+            <div class="goal-milestone ${m.completed ? 'done' : ''}">
+              <div class="ms-check" onclick="event.stopPropagation(); App.toggleMilestone('${goal.id}', ${i})"></div>
+              <span class="ms-label">${this.esc(m.title)}</span>
+            </div>
+          `).join('')}
+        </div>` : ''}
+        <div class="goal-actions">
+          <button class="btn" onclick="event.stopPropagation(); App.editGoal('${goal.id}')">✎ 编辑</button>
+          <button class="btn" style="color:var(--accent);border-color:var(--accent);" onclick="event.stopPropagation(); App.scheduleGoalToCalendar('${goal.id}')">📅 排程</button>
+          <button class="btn" style="color:var(--danger)" onclick="event.stopPropagation(); App.deleteGoal('${goal.id}')">🗑 删除</button>
+        </div>
+      </div>
+    `;
+  }
+
+  goalProgress(goal) {
+    const ms = goal.milestones || [];
+    if (ms.length === 0) return 0;
+    const done = ms.filter(m => m.completed).length;
+    return Math.round((done / ms.length) * 100);
+  }
+
+  async toggleMilestone(goalId, msIndex) {
+    const goal = this.goals.find(g => g.id === goalId);
+    if (!goal) return;
+    goal.milestones[msIndex].completed = !goal.milestones[msIndex].completed;
+    await this.db.put('goals', goal);
+    this.renderGoals();
+  }
+
+  showGoalModal(goalId = null) {
+    this.editingGoalId = goalId;
+    const goal = goalId ? this.goals.find(g => g.id === goalId) : null;
+    const draft = !goalId ? this._goalDraft : null;
+    const draftMs = (draft?.milestones || []).filter(t => t.trim()).map(t => ({ title: t, completed: false }));
+    const ms = goal?.milestones || (draftMs.length ? draftMs : [{title:'',completed:false}]);
+    const html = `
+      <div class="modal-overlay open" id="goalModalOverlay" onclick="if(event.target===this)App.closeGoalModal()">
+        <div class="modal" style="max-width:500px;">
+          <h3>${goal ? '编辑目标' : '新建目标'}</h3>
+          <input class="modal-input" id="goalTitleInput" placeholder="目标名称（如：30天学完 Python 基础）" value="${goal ? this.esc(goal.title) : (draft ? this.esc(draft.title || '') : '')}">
+          <input class="modal-input" id="goalDescInput" placeholder="描述（可选）" value="${goal ? this.esc(goal.description || '') : (draft ? this.esc(draft.description || '') : '')}">
+          <div class="modal-row">
+            <label>截止日期</label>
+            <input type="text" class="select-field dp-input" id="goalDeadlineInput" value="${goal?.deadline || draft?.deadline || ''}" placeholder="选择日期" readonly onclick="event.stopPropagation();App.toggleDatePicker('goalDeadlineInput')">
+            <label>颜色</label>
+            <input type="color" id="goalColorInput" value="${goal?.color || draft?.color || '#4f46e5'}" style="width:36px;height:32px;border:none;cursor:pointer;">
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <label style="font-size:0.85rem;color:var(--text-secondary);">里程碑</label>
+              <button class="btn" style="font-size:0.72rem;padding:2px 10px;" onclick="event.stopPropagation();App.decomposeGoal()">🤖 AI 拆解</button>
+            </div>
+            <div id="goalMilestoneList">
+              ${ms.map((m, i) => `
+                <div class="modal-row" style="margin-bottom:4px;">
+                  <input class="modal-input" id="ms${i}" placeholder="里程碑 ${i+1}" value="${this.esc(m.title)}" style="flex:1;margin-bottom:0;">
+                  <button class="btn" style="color:var(--danger);font-size:0.8rem;" onclick="App.removeMilestoneField(${i})">✕</button>
+                </div>
+              `).join('')}
+            </div>
+            <button class="btn" style="font-size:0.8rem;margin-top:4px;" onclick="App.addMilestoneField()">+ 添加里程碑</button>
+          </div>
+          <div class="modal-actions">
+            <button class="btn" onclick="App.closeGoalModal()">取消</button>
+            <button class="btn btn-primary" onclick="App.saveGoal()">保存</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const existing = document.getElementById('goalModalOverlay');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('goalTitleInput')?.focus();
+  }
+
+  addMilestoneField() {
+    const list = document.getElementById('goalMilestoneList');
+    if (!list) return;
+    const i = list.children.length;
+    const div = document.createElement('div');
+    div.className = 'modal-row';
+    div.style.marginBottom = '4px';
+    div.innerHTML = '<input class="modal-input" id="ms' + i + '" placeholder="里程碑 ' + (i+1) + '" style="flex:1;margin-bottom:0;"><button class="btn" style="color:var(--danger);font-size:0.8rem;" onclick="App.removeMilestoneField(' + i + ')">✕</button>';
+    list.appendChild(div);
+    document.getElementById('ms' + i)?.focus();
+  }
+
+  removeMilestoneField(i) {
+    const list = document.getElementById('goalMilestoneList');
+    if (!list || list.children.length <= 1) return;
+    list.children[i]?.remove();
+    Array.from(list.children).forEach((child, idx) => {
+      const input = child.querySelector('input');
+      if (input) { input.id = 'ms' + idx; input.placeholder = '里程碑 ' + (idx+1); }
+      const btn = child.querySelector('button');
+      if (btn) btn.setAttribute('onclick', 'App.removeMilestoneField(' + idx + ')');
+    });
+  }
+
+  async saveGoal() {
+    const title = document.getElementById('goalTitleInput').value.trim();
+    if (!title) return;
+    const milestones = [];
+    document.querySelectorAll('#goalMilestoneList input').forEach(input => {
+      const t = input.value.trim();
+      if (t) milestones.push({ title: t, completed: false });
+    });
+    const data = {
+      id: this.editingGoalId || uuid(),
+      title,
+      description: document.getElementById('goalDescInput').value.trim(),
+      deadline: document.getElementById('goalDeadlineInput').value,
+      color: document.getElementById('goalColorInput').value,
+      milestones,
+      createdAt: now()
+    };
+    await this.db.put('goals', data);
+    if (this.editingGoalId) {
+      const idx = this.goals.findIndex(g => g.id === this.editingGoalId);
+      if (idx > -1) this.goals[idx] = data;
+    } else {
+      this.goals.push(data);
+    }
+    this._goalDraft = null;
+    this.closeGoalModal(true);
+    this.renderGoals();
+  }
+
+  editGoal(id) {
+    this.showGoalModal(id);
+  }
+
+  // ==================== AI 自动规划 ====================
+  async aiPlan() {
+    // Ensure panel is open
+    const panel = document.getElementById('aiPanel');
+    if (!panel.classList.contains('open')) panel.classList.add('open');
+    document.getElementById('aiInput').value = '';
+    document.getElementById('aiInput').placeholder = '告诉 AI 你想做什么（如：30天学完 Python...）';
+    document.getElementById('aiInput').focus();
+    
+    // Override Enter to trigger planning mode
+    const input = document.getElementById('aiInput');
+    const origHandler = input.onkeydown;
+    const self = this;
+    input.onkeydown = async function(e) {
+      if (e.key === 'Enter') {
+        const goal = this.value.trim();
+        if (!goal) return;
+        this.value = '';
+        this.placeholder = '输入你的需求...';
+        this.onkeydown = origHandler;
+        await self._doPlan(goal);
+      }
+    };
+  }
+
+  async _doPlan(userGoal) {
+    this.addAIMessage('user', '帮我制定计划：' + userGoal);
+    const typingId = this.addAIMessage('assistant', '🧠 分析你的情况和数据...');
+    const typingEl = document.getElementById(typingId);
+
+    const context = {
+      tasks: this.tasks.filter(t => !t.completed).map(t => ({ title: t.title, priority: t.priority })),
+      habits: this.habits.map(h => ({ title: h.title, streak: h.currentStreak })),
+      goals: this.goals.map(g => ({ title: g.title, progress: this.goalProgress(g), deadline: g.deadline })),
+      totalTasks: this.tasks.length,
+      totalHabits: this.habits.length,
+      totalGoals: this.goals.length,
+      today: today()
+    };
+
+    const planningPrompt = `用户想要：${userGoal}
+
+请基于上述用户数据和你对用户的了解（记忆），制定一个可执行的计划。严格按以下 JSON 格式回复（不要其他文字，只输出 JSON）：
+
+{
+  "分析": "基于用户现状的简要分析（1-2句）",
+  "目标": [{"标题": "目标名", "里程碑": ["步骤1", "步骤2", "步骤3"]}],
+  "任务": [{"标题": "任务名", "优先级": "high/medium/low"}]
+}`;
+
+    try {
+      const response = await this.callAI(planningPrompt, context);
+      // Try to parse JSON from response
+      let plan = null;
+      // Normalize Chinese quotes to standard quotes
+      let clean = response.replace(/\u201c/g, '"').replace(/\u201d/g, '"').replace(/\u2018/g, "'").replace(/\u2019/g, "'");
+      // Try ```json block first
+      const jsonMatch = clean.match(/```json\s*([\s\S]*?)\s*```/) || clean.match(/```\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        try { plan = JSON.parse(jsonMatch[1]); } catch(e) { console.log('json block parse fail:', e.message); }
+      }
+      // Try raw JSON
+      if (!plan) {
+        try { plan = JSON.parse(clean); } catch(e) { console.log('raw json parse fail:', e.message); }
+      }
+      
+      if (plan && (plan.目标 || plan.任务 || plan.分析)) {
+        // Build preview
+        let preview = '';
+        if (plan.分析) preview += `📊 ${plan.分析}\n\n`;
+        if (plan.目标 && plan.目标.length) {
+          preview += '🎯 建议目标：\n';
+          plan.目标.forEach((g, i) => {
+            preview += `  ${i+1}. ${g.标题}\n`;
+            if (g.里程碑) g.里程碑.forEach(m => preview += `     □ ${m}\n`);
+          });
+          preview += '\n';
+        }
+        if (plan.任务 && plan.任务.length) {
+          preview += '✅ 今日任务：\n';
+          plan.任务.forEach((t, i) => {
+            preview += `  ${i+1}. ${t.标题} [${t.优先级||'medium'}]\n`;
+          });
+        }
+        
+        if (typingEl) {
+          typingEl.innerHTML = preview.replace(/\n/g, '<br>') + 
+            `<br><button class="btn btn-primary" style="margin-top:8px;" onclick="App.adoptPlan('${encodeURIComponent(JSON.stringify(plan))}')">✅ 采纳计划</button>`;
+        }
+      } else {
+        if (typingEl) typingEl.textContent = response + '\n\n（AI 未返回结构化计划，请尝试更具体的描述）';
+      }
+    } catch (e) {
+      if (typingEl) typingEl.textContent = `⚠️ 规划失败：${e.message}`;
+    }
+  }
+
+  async adoptPlan(encodedPlan) {
+    const plan = JSON.parse(decodeURIComponent(encodedPlan));
+    let created = 0;
+    
+    // Create goals
+    if (plan.目标) {
+      for (const g of plan.目标) {
+        const goal = {
+          id: uuid(),
+          title: g.标题 || g.title,
+          description: '',
+          deadline: '',
+          color: '#4f46e5',
+          milestones: (g.里程碑 || g.milestones || []).map(m => ({ title: typeof m === 'string' ? m : (m.标题||m.title), completed: false })),
+          createdAt: now()
+        };
+        await this.db.put('goals', goal);
+        this.goals.push(goal);
+        created++;
+      }
+    }
+    
+    // Create tasks
+    if (plan.任务) {
+      for (const t of plan.任务) {
+        const task = {
+          id: uuid(),
+          title: t.标题 || t.title,
+          notes: '',
+          completed: false,
+          priority: t.优先级 || t.priority || 'medium',
+          tags: [],
+          dueDate: today(),
+          parentId: null,
+          order: this.tasks.length,
+          createdAt: now(),
+          completedAt: null
+        };
+        await this.db.put('tasks', task);
+        this.tasks.push(task);
+        created++;
+      }
+    }
+    
+    this.addAIMessage('assistant', `✅ 已采纳！创建了 ${created} 个项目（${plan.目标?.length||0} 个目标 + ${plan.任务?.length||0} 个任务）`);
+    this.renderAll();
+  }
+
+  // ==================== AI 智能目标拆解 ====================
+  async decomposeGoal() {
+    const title = document.getElementById('goalTitleInput')?.value?.trim();
+    const desc = document.getElementById('goalDescInput')?.value?.trim();
+    const deadline = document.getElementById('goalDeadlineInput')?.value || '';
+
+    if (!title) { alert('请先输入目标名称'); return; }
+
+    // Find the decompose button & show loading
+    const btns = document.querySelectorAll('#goalModalOverlay button');
+    let btn = null;
+    for (const b of btns) { if (b.textContent.includes('AI 拆解')) { btn = b; break; } }
+    if (btn) { btn.textContent = '⏳ 分析中...'; btn.disabled = true; }
+
+    const prompt = `你是一个目标规划专家。请把以下目标拆解成3-7个具体可执行的里程碑步骤。每个步骤应是一个明确的行动，有可验证的完成标准。
+
+目标标题：${title}
+目标描述：${desc || '无'}
+截止日期：${deadline || '未设置'}
+
+请严格按JSON格式回复（只输出JSON，不要其他文字）：
+{"里程碑": ["步骤1", "步骤2", "步骤3"]}`;
+
+    try {
+      const response = await this.callAI(prompt, {});
+      let data = null;
+      const clean = response.replace(/\u201c/g, '"').replace(/\u201d/g, '"');
+      const jsonMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || clean.match(/(\{[\s\S]*\})/);
+      if (jsonMatch) { try { data = JSON.parse(jsonMatch[1]); } catch(e) {} }
+      if (!data) { try { data = JSON.parse(clean); } catch(e) {} }
+
+      if (data?.里程碑 && Array.isArray(data.里程碑) && data.里程碑.length) {
+        const list = document.getElementById('goalMilestoneList');
+        if (!list) return;
+        list.innerHTML = '';
+        const validMs = data.里程碑.filter(m => m && typeof m === 'string' && m.trim());
+        if (validMs.length === 0) {
+          // Add one empty field as fallback
+          this.addMilestoneField();
+          return;
+        }
+        validMs.forEach((m, i) => {
+          const div = document.createElement('div');
+          div.className = 'modal-row';
+          div.style.marginBottom = '4px';
+          div.innerHTML = `<input class="modal-input" id="ms${i}" value="${this.esc(m.trim())}" style="flex:1;margin-bottom:0;"><button class="btn" style="color:var(--danger);font-size:0.8rem;" onclick="App.removeMilestoneField(${i})">✕</button>`;
+          list.appendChild(div);
+        });
+      } else {
+        alert('AI 未返回有效的里程碑结构，请手动添加。\n\nAI 回复摘要：' + response.slice(0, 150));
+      }
+    } catch (e) {
+      console.error('decomposeGoal error:', e);
+      alert('AI 拆解失败：' + (e.message || '网络错误，请重试'));
+    } finally {
+      if (btn) { btn.textContent = '🤖 AI 拆解'; btn.disabled = false; }
+    }
+  }
+
+  // ==================== AI 每日时间排程 ====================
+  async planTodaySchedule() {
+    this.navigate('ai');  // Navigate to AI chat view
+
+    const todayStr = today();
+    const todayTasks = this.tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate === todayStr));
+    const habitsToday = this.habits.map(h => ({
+      title: h.title,
+      streak: h.currentStreak || 0,
+      doneToday: h.checkins?.[todayStr] || false,
+      color: h.color
+    }));
+
+    const msg = `🕐 帮我安排今天的日程`;
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', '⏳ 正在分析你的今日任务和习惯，制定最优时间分配...');
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+
+    const context = {
+      todayTasks: todayTasks.map(t => ({ title: t.title, priority: t.priority, tags: t.tags })),
+      todayHabits: habitsToday,
+      goals: this.goals.filter(g => {
+        const pct = this.goalProgress(g);
+        return pct < 100;
+      }).map(g => ({ title: g.title, progress: this.goalProgress(g), deadline: g.deadline })),
+      date: todayStr,
+      weekday: ['日','一','二','三','四','五','六'][new Date().getDay()]
+    };
+
+    const prompt = `你是一个专业的时间管理教练。请基于用户的今日任务、习惯和长期目标，为今天制定一份详细的时间分配计划。
+
+用户通常作息参考：早上8:40左右开始活动，11:30左右吃午饭（约30-60分钟），18:00-19:00吃晚饭。其余时间可自由安排。
+
+请按以下结构回复：
+
+## ⏰ 时间安排
+
+**上午 (8:40 - 11:30)**
+为每个任务建议具体时段，考虑精力和优先级。
+
+**下午 (12:30 - 18:00)**
+午饭后适合安排需要专注的工作。
+
+**晚间 (19:00 后)**
+适合轻松任务、习惯养成、回顾总结。
+
+## 🔥 习惯提醒
+提醒今天应该打卡的习惯。
+
+## 💡 时间管理建议
+基于任务量和优先级，给出1-2条具体建议。
+
+可创建的任务请使用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+可创建的目标请使用 [GOAL: 目标名 | milestones: 步骤1, 步骤2] 格式。
+
+保持简洁实用，不要过度展开。`;
+
+    try {
+      const response = await this.callAI(prompt, context);
+      if (el) { el.innerHTML = this._fmtAI(response); this._saveChatHistory(); }
+    } catch (e) {
+      if (el) el.textContent = '⚠️ 排程失败：' + (e.message || '网络错误');
+      console.error('planTodaySchedule error:', e);
+    }
+  }
+
+  // ==================== AI 周报生成 ====================
+  async generateWeeklyReport() {
+    this.navigate('ai');
+
+    // Gather last 7 days of data
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      const dayTasks = this.tasks.filter(t => t.completed && t.completedAt?.startsWith(ds));
+      days.push({
+        date: ds,
+        weekday: ['日','一','二','三','四','五','六'][d.getDay()],
+        completed: dayTasks.length,
+        tasks: dayTasks.map(t => ({ title: t.title, priority: t.priority }))
+      });
+    }
+
+    // Habit stats
+    const habitsReport = this.habits.map(h => {
+      let weekChecks = 0;
+      days.forEach(d => { if (h.checkins?.[d.date]) weekChecks++; });
+      return {
+        title: h.title,
+        weekChecks,
+        currentStreak: h.currentStreak || 0,
+        bestStreak: h.bestStreak || 0,
+        rate: Math.round((weekChecks / 7) * 100)
+      };
+    });
+
+    // Goal progress
+    const goalsReport = this.goals.map(g => ({
+      title: g.title,
+      progress: this.goalProgress(g),
+      totalMilestones: (g.milestones || []).length,
+      doneMilestones: (g.milestones || []).filter(m => m.completed).length,
+      deadline: g.deadline,
+      overdue: g.deadline && new Date(g.deadline) < new Date() && this.goalProgress(g) < 100
+    }));
+
+    const totalCompleted = days.reduce((s, d) => s + d.completed, 0);
+    const totalHabitChecks = habitsReport.reduce((s, h) => s + h.weekChecks, 0);
+
+    const msg = `📝 生成本周工作总结`;
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', `⏳ 正在分析本周数据...
+
+📊 本周完成 ${totalCompleted} 个任务 · 习惯打卡 ${totalHabitChecks} 次 · ${this.goals.length} 个目标进行中
+
+正在生成详细报告...`);
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+
+    const context = { days, habitsReport, goalsReport, totalCompleted, totalHabitChecks };
+
+    const prompt = `你是一个个人成长教练。请根据用户本周的数据，生成一份结构化的周度总结报告。
+
+请按以下结构回复（使用 Markdown）：
+
+## 📊 本周关键数据
+- 完成任务数及趋势
+- 习惯打卡率
+- 目标总体进展
+
+## 🎯 目标进展
+对每个目标简要评价
+
+## 💡 亮点与不足
+1-2个亮点，1-2个待改进
+
+## 📋 下周建议
+2-3条具体可执行的建议。
+可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+
+语气积极建设性，数据驱动，简洁实用。`;
+
+    try {
+      const response = await this.callAI(prompt, context);
+      if (el) { el.innerHTML = this._fmtAI(response); this._saveChatHistory(); }
+    } catch (e) {
+      if (el) el.textContent = '⚠️ 周报生成失败：' + (e.message || '网络错误');
+      console.error('generateWeeklyReport error:', e);
+    }
+  }
+
+  closeGoalModal(skipDraft = false) {
+    const overlay = document.getElementById('goalModalOverlay');
+    if (overlay && !skipDraft && !this.editingGoalId) {
+      const title = document.getElementById('goalTitleInput')?.value || '';
+      const description = document.getElementById('goalDescInput')?.value || '';
+      const deadline = document.getElementById('goalDeadlineInput')?.value || '';
+      const color = document.getElementById('goalColorInput')?.value || '';
+      const milestones = Array.from(document.querySelectorAll('#goalMilestoneList input')).map(i => i.value);
+      const hasContent = !!(title.trim() || description.trim() || deadline || milestones.some(m => m.trim()));
+      this._goalDraft = hasContent ? { title, description, deadline, color, milestones } : null;
+    }
+    overlay?.remove();
+    this.editingGoalId = null;
+  }
+
+  async deleteGoal(id) {
+    if (!(await this.confirmDialog('确定删除这个目标吗？', { danger: true, title: '删除目标', confirmText: '删除' }))) return;
+    await this.db.delete('goals', id);
+    this.goals = this.goals.filter(g => g.id !== id);
+    this.renderGoals();
+  }
+
+
+  // ==================== Week View ====================
+  renderWeekView() {
+    document.getElementById('weekRange').textContent = this._weekRangeStr();
+    const grid = document.getElementById('weekGrid');
+    if (!grid) return;
+    const days = this._weekDays();
+    let html = '';
+    const todayStr = today();
+    days.forEach(d => {
+      const ds = d.toISOString().slice(0,10);
+      const tasks = this.tasks.filter(t => t.dueDate === ds);
+      const isToday = ds === todayStr;
+      html += `<div class="week-day${isToday?' today':''}">
+        <div class="week-day-header">${['日','一','二','三','四','五','六'][d.getDay()]}<br>${d.getDate()}</div>
+        <div class="week-day-tasks">`;
+      tasks.forEach(t => {
+        const p = {high:'🔴',medium:'🟡',low:'⚪'}[t.priority]||'⚪';
+        html += `<div class="week-task ${t.completed?'done':''}" onclick="App.editTask('${t.id}')" title="${this.esc(t.title)}">${p} ${this.esc(t.title).slice(0,12)}</div>`;
+      });
+      html += `</div></div>`;
+    });
+    grid.innerHTML = html;
+  }
+  _weekDays() {
+    const d = new Date(); d.setDate(d.getDate()-d.getDay());
+    return Array.from({length:7},(_,i)=>{const c=new Date(d);c.setDate(c.getDate()+i);return c;});
+  }
+  _weekRangeStr() {
+    const days = this._weekDays();
+    return days[0].toLocaleDateString('zh-CN',{month:'long',day:'numeric'}) + ' - ' + days[6].toLocaleDateString('zh-CN',{month:'long',day:'numeric'});
+  }
+
+  // ==================== Search ====================
+  filterTasks() {
+    const q = document.getElementById('taskSearch')?.value?.toLowerCase()||'';
+    this._searchQuery = q;
+    this.renderTaskList();
+  }
+
+  // ==================== Goal ↔ Task ====================
+  _updateGoalProgress(goalId) {
+    const goal = this.goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const linkedTasks = this.tasks.filter(t => t.goalId === goalId);
+    // Auto-mark milestones based on completed linked tasks
+    const completed = linkedTasks.filter(t => t.completed).length;
+    const ms = goal.milestones||[];
+    if (ms.length > 0) {
+      const perMs = Math.ceil(linkedTasks.length / ms.length) || 1;
+      ms.forEach((m, i) => { m.completed = completed >= (i+1)*perMs; });
+    }
+    this.db.put('goals', goal);
+  }
+
+  // ==================== Dashboard Enhanced ====================
+  _dashWeekCompare() {
+    const now = new Date();
+    const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate()-now.getDay());
+    const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(lastWeekStart.getDate()-7);
+    const thisWeek = this.tasks.filter(t=>t.completed&&new Date(t.completedAt)>=thisWeekStart).length;
+    const lastWeek = this.tasks.filter(t=>t.completed&&new Date(t.completedAt)>=lastWeekStart&&new Date(t.completedAt)<thisWeekStart).length;
+    const diff = thisWeek - lastWeek;
+    const trend = diff>0?`↑ +${diff}`:diff<0?`↓ ${diff}`:'→ 持平';
+    return {thisWeek, lastWeek, trend};
+  }
+
+  _dashActiveHours() {
+    const hours = new Array(24).fill(0);
+    this.tasks.filter(t=>t.completedAt).forEach(t=>{
+      const h = new Date(t.completedAt).getHours();
+      hours[h]++;
+    });
+    let peak = 0, peakHour = 0;
+    hours.forEach((c,i)=>{if(c>peak){peak=c;peakHour=i;}});
+    return peakHour;
+  }
+
+  // ==================== AI Chat History ====================
+  async _saveChatHistory() {
+    const msgs = [];
+    document.querySelectorAll('#aiChatMessages .ai-chat-msg').forEach(m=>{
+      msgs.push({role:m.classList.contains('user')?'user':'assistant',content:m.querySelector('.ai-chat-content')?.innerHTML||''});
+    });
+    await this.db.put('settings',{key:'chatHistory',value:JSON.stringify(msgs.slice(-50))});
+  }
+
+  async _loadChatHistory() {
+    const s = await this.db.get('settings','chatHistory');
+    if(!s?.value) return;
+    try {
+      const msgs = JSON.parse(s.value);
+      const c = document.getElementById('aiChatMessages');
+      c.innerHTML = '';
+      msgs.forEach(m=>this._addAIChatMsg(m.role,m.content));
+    } catch(e){}
+  }
+  // ==================== Dashboard ====================
+  renderDashboard() {
+    this.renderStats();
+    this.renderTrendChart();
+    this.renderDonutChart();
+    this.renderHeatmap();
+  }
+
+  renderStats() {
+    const nowDate = new Date();
+    const weekStartDate = new Date(nowDate); weekStartDate.setDate(nowDate.getDate() - nowDate.getDay() + 1);
+    const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
+
+    const completedTasks = this.tasks.filter(t => t.completed);
+    const weekCompleted = completedTasks.filter(t => t.completedAt && new Date(t.completedAt) >= weekStartDate).length;
+    const monthCompleted = completedTasks.filter(t => t.completedAt && new Date(t.completedAt) >= monthStart).length;
+    const maxStreak = Math.max(0, ...this.habits.map(h => h.currentStreak || 0));
+
+    const wc = this._dashWeekCompare();
+    const peakH = this._dashActiveHours();
+    document.getElementById('statCards').innerHTML = `
+      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${weekCompleted}</div><div class="stat-label">本周完成任务</div></div>
+      <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value">${monthCompleted}</div><div class="stat-label">本月完成任务</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-value">${this.tasks.length}</div><div class="stat-label">总任务数</div></div>
+      <div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-value">${maxStreak}天</div><div class="stat-label">最长连续打卡</div></div>
+      <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-value">${wc.trend}</div><div class="stat-label">较上周 ${wc.lastWeek}→${wc.thisWeek}</div></div>
+      <div class="stat-card"><div class="stat-icon">⏰</div><div class="stat-value">${peakH}:00</div><div class="stat-label">最活跃时段</div></div>
+    `;
+  }
+
+  renderTrendChart() {
+    const canvas = document.getElementById('chartTrend');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.parentElement.clientWidth;
+    canvas.width = w * 2; canvas.height = 360;
+    canvas.style.width = w + 'px'; canvas.style.height = '180px';
+    ctx.scale(2, 2);
+
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().slice(0, 10);
+      const count = this.tasks.filter(t => t.completed && t.completedAt?.startsWith(ds)).length;
+      days.push({ label: ['日','一','二','三','四','五','六'][d.getDay()], count });
+    }
+
+    const pad = 36, top = 16, bottom = 30;
+    const chartW = w - pad * 2, chartH = 180 - top - bottom;
+    const maxCount = Math.max(...days.map(d => d.count), 1);
+    const barW = (chartW / 7) * 0.55;
+    const gap = (chartW / 7) * 0.45;
+
+    // Grid lines
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border').trim();
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = top + (chartH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(w - pad, y); ctx.stroke();
+    }
+
+    days.forEach((d, i) => {
+      const x = pad + i * (chartW / 7) + gap / 2;
+      const barH = maxCount > 0 ? (d.count / maxCount) * chartH : 0;
+      const y = top + chartH - barH;
+
+      // Bar
+      const accent = getComputedStyle(document.body).getPropertyValue('--accent').trim();
+      ctx.fillStyle = d.count > 0 ? accent : getComputedStyle(document.body).getPropertyValue('--border').trim();
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, Math.max(barH, 2), [3, 3, 0, 0]);
+      ctx.fill();
+
+      // Value on top
+      if (d.count > 0) {
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim();
+        ctx.font = '600 10px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.count, x + barW / 2, y - 6);
+      }
+
+      // Label
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim();
+      ctx.font = '10px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(d.label, x + barW / 2, top + chartH + 16);
+    });
+  }
+
+  renderDonutChart() {
+    const canvas = document.getElementById('chartDonut');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.parentElement.clientWidth;
+    canvas.width = w * 2; canvas.height = 360;
+    canvas.style.width = w + 'px'; canvas.style.height = '180px';
+    ctx.scale(2, 2);
+
+    // Count tags
+    const tagCount = {};
+    let untagged = 0;
+    this.tasks.forEach(t => {
+      if (!t.tags || t.tags.length === 0) untagged++;
+      else t.tags.forEach(tag => { tagCount[tag] = (tagCount[tag] || 0) + 1; });
+    });
+    if (untagged > 0) tagCount['未分类'] = untagged;
+
+    const entries = Object.entries(tagCount);
+    if (entries.length === 0) {
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-muted').trim();
+      ctx.font = '12px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('暂无数据', 90, 90);
+      return;
+    }
+
+    const cx = w * 0.3, cy = 90, r = 56, ir = 32;
+    const total = entries.reduce((s, [, c]) => s + c, 0);
+    const colors = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+    let angle = -Math.PI / 2;
+
+    entries.forEach(([tag, count], i) => {
+      const slice = (count / total) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, angle, angle + slice);
+      ctx.arc(cx, cy, ir, angle + slice, angle, true);
+      ctx.closePath();
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fill();
+      angle += slice;
+    });
+
+    // Center text
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary').trim();
+    ctx.font = 'bold 14px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(total, cx, cy - 4);
+    ctx.font = '9px -apple-system, sans-serif';
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim();
+    ctx.fillText('总计', cx, cy + 10);
+
+    // Legend
+    let lx = w * 0.55, ly = 30;
+    entries.forEach(([tag, count], i) => {
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(lx, ly, 8, 8);
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-secondary').trim();
+      ctx.font = '10px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${tag} ${Math.round(count/total*100)}%`, lx + 14, ly + 8);
+      ly += 18;
+    });
+  }
+
+  renderHeatmap() {
+    const grid = document.getElementById('heatmapGrid');
+    if (!grid) return;
+    if (this.habits.length === 0) {
+      grid.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:16px;">暂无习惯数据</div>';
+      return;
+    }
+
+    // Build 28-day grid
+    const cells = [];
+    for (let i = 27; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      cells.push(d.toISOString().slice(0, 10));
+    }
+
+    grid.innerHTML = this.habits.map(h => {
+      const cellHTML = cells.map(dateStr => {
+        const done = h.checkins?.[dateStr] || false;
+        const level = done ? 'l4' : 'l0';
+        return `<div class="heatmap-cell ${level}" title="${dateStr}"></div>`;
+      }).join('');
+      return `
+        <div class="heatmap-row">
+          <div class="heatmap-label">${this.esc(h.title)}</div>
+          <div class="heatmap-cells">${cellHTML}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  renderToday() {
+    this.renderTaskList();
+    this.renderHabits();
+  }
+
+  // ==================== Theme ====================
+  toggleTheme() {
+    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    this.applyTheme();
+    this.db.put('settings', { key: 'theme', value: this.theme });
+  }
+
+  applyTheme() {
+    document.documentElement.setAttribute('data-theme', this.theme);
+    const toggle = document.getElementById('darkToggle');
+    if (toggle) {
+      if (this.theme === 'dark') toggle.classList.add('active');
+      else toggle.classList.remove('active');
+    }
+    // Re-render charts on theme change
+    if (this.currentView === 'dashboard') {
+      setTimeout(() => { this.renderTrendChart(); this.renderDonutChart(); }, 50);
+    }
+  }
+
+  // ==================== AI Chat View ====================
+
+  async aiChatSend() {
+    const input = document.getElementById('aiChatInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = ''; input.style.height = 'auto';
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', '\u23f3 思考中...');
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+    const nowDate = new Date();
+    const ctx = {
+      tasks: this.tasks.filter(t => !t.completed).map(t => ({ title: t.title, priority: t.priority, dueDate: t.dueDate, dueTime: t.dueTime })),
+      habits: this.habits.map(h => ({ title: h.title, streak: h.currentStreak })),
+      goals: this.goals.map(g => ({ title: g.title, progress: this.goalProgress(g) })),
+      today: today(),
+      currentTime: nowDate.toTimeString().slice(0, 5),
+      weekday: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][nowDate.getDay()]
+    };
+    try {
+      const r = await this.callAI(msg, ctx);
+      if (el) { el.innerHTML = this._fmtAI(r); this._saveChatHistory(); }
+    } catch (e) { if (el) el.textContent = '\u26a0\ufe0f ' + e.message; }
+  }
+
+  _addAIChatMsg(role, content) {
+    const c = document.getElementById('aiChatMessages');
+    const id = 'aichat-' + uuid();
+    const d = document.createElement('div'); d.className = 'ai-chat-msg ' + role; d.id = id;
+    d.innerHTML = '<div class="ai-chat-content">' + content + '</div>';
+    c.appendChild(d); c.scrollTop = c.scrollHeight;
+    return id;
+  }
+
+  _fmtAI(text) {
+    let h = this.esc(text);
+    const cards = [];
+    const stash = (cardHtml) => { cards.push(cardHtml); return '\u0001CARD' + (cards.length - 1) + '\u0001'; };
+
+    h = h.replace(/\[TASKSET:\s*([^\]]+)\]/gi, (m, body) => {
+      const parts = body.split('|').map(s => s.trim()).filter(Boolean);
+      const title = parts[0] || '';
+      const fields = {};
+      parts.slice(1).forEach(p => {
+        const k = p.indexOf(':');
+        if (k > 0) fields[p.slice(0, k).trim().toLowerCase()] = p.slice(k + 1).trim();
+      });
+      const pRaw = (fields.priority || '').toLowerCase();
+      const pt = ['high', 'medium', 'low'].includes(pRaw) ? pRaw : 'medium';
+      const dates = (fields.dates || '').split(',').map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+      const time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(fields.time || '') ? fields.time.padStart(5, '0') : '';
+      const dur = /^\d{1,4}$/.test(fields.duration || '') ? String(parseInt(fields.duration, 10)) : '';
+      if (!dates.length) return '';
+      const priLabel = {high:'🔴 高优先级', medium:'🟡 中优先级', low:'⚪ 低优先级'}[pt]||pt;
+      const range = dates.length > 1 ? dates[0] + ' ~ ' + dates[dates.length - 1] + '（共' + dates.length + '天）' : dates[0];
+      const timeBits = [priLabel, '📅 ' + range];
+      if (time) timeBits.push('🕒 ' + time);
+      if (dur) timeBits.push('⏱ ' + dur + ' 分钟');
+      const desc = timeBits.join('　·　') + '　·　点击按钮一键添加全部';
+      return stash('<div class="ai-action-card"><span class="action-icon">☐</span><div class="action-info"><div class="action-title">'+this.esc(title)+'</div><div class="action-desc">'+desc+'</div></div><button class="ai-action-add" onclick="App._addTaskSetFromAI(\''+encodeURIComponent(title)+'\',\''+encodeURIComponent(pt)+'\',\''+encodeURIComponent(dates.join(','))+'\',\''+encodeURIComponent(time)+'\',\''+encodeURIComponent(dur)+'\',this)">➕ 批量添加 '+dates.length+' 个任务</button></div>');
+    });
+
+    h = h.replace(/\[TASK:\s*([^\]]+)\]/gi, (m, body) => {
+      const parts = body.split('|').map(s => s.trim()).filter(Boolean);
+      const title = parts[0] || '';
+      const fields = {};
+      parts.slice(1).forEach(p => {
+        const k = p.indexOf(':');
+        if (k > 0) fields[p.slice(0, k).trim().toLowerCase()] = p.slice(k + 1).trim();
+      });
+      const pRaw = (fields.priority || '').toLowerCase();
+      const pt = ['high', 'medium', 'low'].includes(pRaw) ? pRaw : 'medium';
+      const date = /^\d{4}-\d{2}-\d{2}$/.test(fields.date || '') ? fields.date : '';
+      const time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(fields.time || '') ? fields.time.padStart(5, '0') : '';
+      const dur = /^\d{1,4}$/.test(fields.duration || '') ? String(parseInt(fields.duration, 10)) : '';
+      const priLabel = {high:'🔴 高优先级', medium:'🟡 中优先级', low:'⚪ 低优先级'}[pt]||pt;
+      const timeBits = [];
+      if (date) timeBits.push('📅 ' + date);
+      if (time) timeBits.push('🕒 ' + time);
+      if (dur) timeBits.push('⏱ ' + dur + ' 分钟');
+      const desc = priLabel + (timeBits.length ? '　·　' + timeBits.join('　·　') : '') + '　·　点击右侧按钮添加到今日待办';
+      return stash('<div class="ai-action-card"><span class="action-icon">☐</span><div class="action-info"><div class="action-title">'+this.esc(title)+'</div><div class="action-desc">'+desc+'</div></div><button class="ai-action-add" onclick="App._addTaskFromAI(\''+encodeURIComponent(title)+'\',\''+encodeURIComponent(pt)+'\',\''+encodeURIComponent(date)+'\',\''+encodeURIComponent(time)+'\',\''+encodeURIComponent(dur)+'\',this)">➕ 添加任务</button></div>');
+    });
+
+    h = h.replace(/\[GOAL:\s*([^\]|]+)(?:\s*\|\s*milestones:\s*([^\]]+))?\s*\]/gi, (m, t, ms) => {
+      const msCount = ms ? ms.split(',').length : 1;
+      return stash('<div class="ai-action-card"><span class="action-icon">🎯</span><div class="action-info"><div class="action-title">'+this.esc(t.trim())+'</div><div class="action-desc">'+msCount+'个里程碑　·　点击右侧按钮添加到长期目标</div></div><button class="ai-action-add" onclick="App._addGoalFromAI(\''+encodeURIComponent(t.trim())+'\',\''+(ms?encodeURIComponent(ms.trim()):'')+'\',this)">➕ 添加目标</button></div>');
+    });
+
+    h = this._mdToHtml(h);
+    return h.replace(/\u0001CARD(\d+)\u0001/g, (m, idx) => cards[+idx]);
+  }
+
+  _mdToHtml(src) {
+    const lines = src.split('\n');
+    let out = '';
+    let list = null;
+    const closeList = () => { if (list) { out += '</' + list + '>'; list = null; } };
+    for (const raw of lines) {
+      const t = raw.trim();
+      if (!t) { closeList(); continue; }
+      if (/^\u0001CARD\d+\u0001$/.test(t)) { closeList(); out += t; continue; }
+      const h = t.match(/^(#{1,4})\s+(.*)$/);
+      if (h) { closeList(); out += '<div class="md-h md-h' + h[1].length + '">' + this._mdInline(h[2]) + '</div>'; continue; }
+      if (/^(-{3,}|={3,}|\*{3,})$/.test(t)) { closeList(); out += '<hr class="md-hr">'; continue; }
+      const ul = t.match(/^[-*+]\s+(.*)$/);
+      if (ul) {
+        if (list !== 'ul') { closeList(); out += '<ul class="md-list">'; list = 'ul'; }
+        out += '<li>' + this._mdInline(ul[1]) + '</li>';
+        continue;
+      }
+      const ol = t.match(/^\d+[.、)）]\s+(.*)$/);
+      if (ol) {
+        if (list !== 'ol') { closeList(); out += '<ol class="md-list">'; list = 'ol'; }
+        out += '<li>' + this._mdInline(ol[1]) + '</li>';
+        continue;
+      }
+      closeList();
+      out += '<div class="md-p">' + this._mdInline(t) + '</div>';
+    }
+    closeList();
+    return out;
+  }
+
+  _mdInline(s) {
+    const codes = [];
+    s = s.replace(/`([^`]+)`/g, (m, c) => { codes.push(c); return '\u0002' + (codes.length - 1) + '\u0002'; });
+    s = s.replace(/\*\*([^\*]+)\*\*/g, '<b>$1</b>');
+    s = s.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+    s = s.replace(/\u0002(\d+)\u0002/g, (m, idx) => '<code class="md-code">' + codes[+idx] + '</code>');
+    return s;
+  }
+
+  async _addTaskFromAI(title, priority, date, time, duration, btn) {
+    title = decodeURIComponent(title); priority = decodeURIComponent(priority) || 'medium';
+    const dueDate = date ? decodeURIComponent(date) : null;
+    const dueTime = time ? decodeURIComponent(time) : null;
+    const dur = duration ? (parseInt(decodeURIComponent(duration), 10) || 0) : 0;
+    await this.addTask(title, priority, null, { dueDate, dueTime, estimatedDuration: dur });
+    if (btn) {
+      btn.textContent = '✅ 已添加';
+      btn.classList.add('done');
+      const icon = btn.closest('.ai-action-card')?.querySelector('.action-icon');
+      if (icon) { icon.textContent = '✅'; icon.classList.add('done'); }
+    }
+  }
+
+  async _addTaskSetFromAI(title, priority, dates, time, duration, btn) {
+    title = decodeURIComponent(title); priority = decodeURIComponent(priority) || 'medium';
+    const dateList = decodeURIComponent(dates).split(',').map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+    const dueTime = time ? decodeURIComponent(time) : null;
+    const dur = duration ? (parseInt(decodeURIComponent(duration), 10) || 0) : 0;
+    if (!dateList.length) return;
+    for (const d of dateList) {
+      await this.addTask(title, priority, null, { dueDate: d, dueTime, estimatedDuration: dur });
+    }
+    if (btn) {
+      btn.textContent = '✅ 已添加 ' + dateList.length + ' 个';
+      btn.classList.add('done');
+      const icon = btn.closest('.ai-action-card')?.querySelector('.action-icon');
+      if (icon) { icon.textContent = '✅'; icon.classList.add('done'); }
+    }
+  }
+
+
+  async _addGoalFromAI(title, msStr, btn) {
+    title = decodeURIComponent(title);
+    const ms = decodeURIComponent(msStr).split(',').map(m=>({title:m.trim(),completed:false})).filter(m=>m.title);
+    const g = {id:uuid(),title,description:'',deadline:'',color:'#4f46e5',milestones:ms.length?ms:[{title:'\u5f00\u59cb\u6267\u884c',completed:false}],createdAt:now()};
+    await this.db.put('goals', g); this.goals.push(g);
+    if (btn) {
+      btn.textContent = '✅ 已添加';
+      btn.classList.add('done');
+      const icon = btn.closest('.ai-action-card')?.querySelector('.action-icon');
+      if (icon) { icon.textContent = '✅'; icon.classList.add('done'); }
+    }
+  }
+
+  // Legacy wrappers
+  toggleAIPanel() { this.navigate('ai'); }
+  aiQuick(p) { this.navigate('ai'); setTimeout(()=>{document.getElementById('aiChatInput').value=p;this.aiChatSend();},200); }
+  aiPlan() { this.aiQuick('\u5e2e\u6211\u5236\u5b9a\u8ba1\u5212\uff1a'); }
+  aiSend() { this.navigate('ai'); }
+
+  async callAI(userMessage, context) {
+    const apiKey = await this.getSetting('apiKey');
+    if (!apiKey) throw new Error('请先在设置中配置 API Key');
+    return await this.callDeepSeek(userMessage, context, apiKey);
+  }
+
+  async callDeepSeek(userMessage, context, apiKey) {
+    const baseUrl = (await this.getSetting('apiBase')) || 'https://api.deepseek.com/v1';
+    const model = (await this.getSetting('apiModel')) || 'deepseek-chat';
+    
+    const systemPrompt = `你是用户的个人规划教练。根据用户的任务、习惯和目标数据，提供具体的、可操作的建议。
+回复要求：
+1. 使用中文
+2. 结构化输出：如果涉及计划，用清单格式
+3. 保持简洁，重点突出
+4. 基于实际数据给出建议，不要泛泛而谈
+5. 当建议具体任务时，用格式：[TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数]
+6. 当建议目标时，用格式：[GOAL: 目标名 | milestones: 步骤1, 步骤2, 步骤3]
+7. 同一件事需要连续多天执行时（如"每天8点学习""这周每天健身""下周一开始每天跑步"），用批量格式：[TASKSET: 任务名 | priority: high/medium/low | dates: YYYY-MM-DD,YYYY-MM-DD | time: HH:mm | duration: 分钟数]
+   dates 用英文逗号分隔逐日列出执行日期；同一件事不要拆成多个 [TASK:]
+
+时间规则（重要）：
+- 数据中的 today（今天日期）、currentTime（当前时刻）、weekday（星期几）是换算所有相对时间的基准
+- 用户提出时间需求时，[TASK:] 必须输出对应的字段：
+  · 日期需求（如"明天""周五""下周一""10月25日"）→ date: YYYY-MM-DD，必须换算成绝对日期
+  · 时刻需求（如"下午3点""9点半"）→ time: HH:mm，24 小时制
+  · 时长需求（如"1小时""半小时""90分钟"）→ duration: 分钟数
+- [TASKSET:] 的 dates 同样逐日列出换算后的绝对日期，time/duration 规则与 [TASK:] 一致
+- 时间字段均可选：用户没有提到的时间信息不要输出对应字段
+- date/dates 不要输出"明天""周五"等相对说法，一律 YYYY-MM-DD；time 一律 24 小时制 HH:mm
+- 同一任务同时有日期和时刻时，两个字段都要输出`;
+
+    const contextStr = JSON.stringify(context, null, 2);
+    
+    const resp = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `当前数据：\n${contextStr}\n\n用户问题：${userMessage}` }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text().catch(() => '');
+      throw new Error(this._redactSecrets(`API 错误 (${resp.status}): ${err.slice(0, 200)}`, apiKey));
+    }
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || JSON.stringify(data);
+  }
+
+  async getSetting(key) {
+    const setting = await this.db.get('settings', key);
+    return setting?.value || null;
+  }
+
+  confirmDialog(message, opts = {}) {
+    return new Promise((resolve) => {
+      const danger = !!opts.danger;
+      const title = opts.title || '确认操作';
+      const confirmText = opts.confirmText || '确认';
+      const html = '<div class="modal-overlay open" id="confirmOverlay">' +
+        '<div class="modal confirm-modal">' +
+        '<div class="confirm-icon">' + (danger ? '⚠️' : '❓') + '</div>' +
+        '<h3>' + title + '</h3>' +
+        '<div class="confirm-msg">' + this.esc(message) + '</div>' +
+        '<div class="modal-actions">' +
+        '<button class="btn" id="confirmCancelBtn">取消</button>' +
+        '<button class="btn ' + (danger ? 'btn-danger' : 'btn-primary') + '" id="confirmOkBtn">' + confirmText + '</button>' +
+        '</div></div></div>';
+      document.body.insertAdjacentHTML('beforeend', html);
+      const overlay = document.getElementById('confirmOverlay');
+      const onKey = (e) => { if (e.key === 'Escape') done(false); };
+      const done = (v) => {
+        overlay?.remove();
+        document.removeEventListener('keydown', onKey);
+        resolve(v);
+      };
+      document.addEventListener('keydown', onKey);
+      document.getElementById('confirmOkBtn').onclick = () => done(true);
+      document.getElementById('confirmCancelBtn').onclick = () => done(false);
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) done(false); });
+      document.getElementById('confirmOkBtn').focus();
+    });
+  }
+
+  toggleDatePicker(inputId) {
+    const existing = document.querySelector('.dp-panel');
+    if (existing && existing.dataset.for === inputId) { existing.remove(); return; }
+    if (existing) existing.remove();
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (!this._dpOutsideBound) {
+      this._dpOutsideBound = true;
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.dp-panel') && !e.target.closest('.dp-input')) {
+          document.querySelector('.dp-panel')?.remove();
+        }
+      });
+    }
+    const cur = /^\d{4}-\d{2}-\d{2}$/.test(input.value || '') ? input.value : this._dpFmt(new Date());
+    const parts = cur.split('-').map(Number);
+    const panel = document.createElement('div');
+    panel.className = 'dp-panel';
+    panel.dataset.for = inputId;
+    panel.dataset.year = parts[0];
+    panel.dataset.month = parts[1];
+    document.body.appendChild(panel);
+    const r = input.getBoundingClientRect();
+    const maxLeft = window.scrollX + document.documentElement.clientWidth - 272;
+    panel.style.left = Math.min(Math.max(r.left + window.scrollX, 8), maxLeft) + 'px';
+    panel.style.top = (r.bottom + window.scrollY + 6) + 'px';
+    this._renderDatePicker(inputId);
+  }
+
+  _renderDatePicker(inputId) {
+    const panel = document.querySelector('.dp-panel[data-for="' + inputId + '"]');
+    const input = document.getElementById(inputId);
+    if (!panel || !input) return;
+    const y = +panel.dataset.year;
+    const m = +panel.dataset.month;
+    const sel = input.value;
+    const todayLocal = this._dpFmt(new Date());
+    const startDow = new Date(y, m - 1, 1).getDay();
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const cells = [];
+    for (let k = 0; k < startDow; k++) cells.push({ ds: this._dpFmt(new Date(y, m - 1, k - startDow)), out: true });
+    for (let d = 1; d <= daysInMonth; d++) cells.push({ ds: this._dpFmt(new Date(y, m - 1, d)), out: false });
+    const tail = (7 - cells.length % 7) % 7;
+    for (let k = 1; k <= tail; k++) cells.push({ ds: this._dpFmt(new Date(y, m - 1, daysInMonth + k)), out: true });
+    const wd = ['日', '一', '二', '三', '四', '五', '六'];
+    let html = '<div class="dp-head">' +
+      '<button type="button" class="dp-nav" onclick="App._dpMove(\'' + inputId + '\',-1)">◀</button>' +
+      '<div class="dp-title">' + y + ' 年 ' + m + ' 月</div>' +
+      '<button type="button" class="dp-nav" onclick="App._dpMove(\'' + inputId + '\',1)">▶</button>' +
+      '</div>';
+    html += '<div class="dp-grid">' + wd.map(w => '<div class="dp-wd">' + w + '</div>').join('') + '</div>';
+    html += '<div class="dp-grid">' + cells.map(c => {
+      const cls = 'dp-day' + (c.out ? ' out' : '') + (c.ds === todayLocal ? ' today' : '') + (c.ds === sel ? ' sel' : '');
+      return '<button type="button" class="' + cls + '" onclick="App._dpPick(\'' + inputId + '\',\'' + c.ds + '\')">' + Number(c.ds.slice(8)) + '</button>';
+    }).join('') + '</div>';
+    html += '<div class="dp-foot">' +
+      '<button type="button" class="btn" onclick="App._dpPick(\'' + inputId + '\',\'\')">清除</button>' +
+      '<button type="button" class="btn" onclick="App._dpPick(\'' + inputId + '\',\'' + todayLocal + '\')">今天</button>' +
+      '</div>';
+    panel.innerHTML = html;
+  }
+
+  _dpMove(inputId, delta) {
+    const panel = document.querySelector('.dp-panel[data-for="' + inputId + '"]');
+    if (!panel) return;
+    let y = +panel.dataset.year;
+    let m = +panel.dataset.month + delta;
+    if (m < 1) { m = 12; y--; }
+    if (m > 12) { m = 1; y++; }
+    panel.dataset.year = y;
+    panel.dataset.month = m;
+    this._renderDatePicker(inputId);
+  }
+
+  _dpPick(inputId, ds) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = ds;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    document.querySelector('.dp-panel')?.remove();
+  }
+
+  _dpFmt(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  toggleApiKeyVisibility() {
+    const input = document.getElementById('apiKeyInput');
+    const btn = document.getElementById('apiKeyToggleBtn');
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁️';
+    btn.title = show ? '隐藏 API Key' : '显示 API Key';
+    input.focus();
+  }
+
+  _redactSecrets(text, key) {
+    if (typeof text !== 'string' || !text) return text;
+    let out = key ? text.split(key).join('sk-••••') : text;
+    return out.replace(/sk-[A-Za-z0-9_\-]{6,}/g, 'sk-••••');
+  }
+
+  async saveApiKey(value) {
+    await this.db.put('settings', { key: 'apiKey', value });
+  }
+
+  async saveApiBase(value) {
+    await this.db.put('settings', { key: 'apiBase', value });
+  }
+
+  async saveApiModel(value) {
+    await this.db.put('settings', { key: 'apiModel', value });
+  }
+
+  async testAI() {
+    const statusEl = document.getElementById('aiStatus');
+    const apiKey = await this.getSetting('apiKey');
+    if (!apiKey) {
+      statusEl.textContent = '⚠️ 请先配置 API Key';
+      statusEl.style.color = 'var(--warning)';
+      return;
+    }
+    try {
+      const baseUrl = (await this.getSetting('apiBase')) || 'https://api.deepseek.com/v1';
+      const model = (await this.getSetting('apiModel')) || 'deepseek-chat';
+      const resp = await fetch(baseUrl + '/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + apiKey
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [{ role: 'user', content: 'Hi' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+      if (resp.ok) {
+        statusEl.textContent = '✅ DeepSeek 已连接';
+        statusEl.style.color = 'var(--success)';
+      } else {
+        statusEl.textContent = '⚠️ API 错误 (' + resp.status + ')';
+        statusEl.style.color = 'var(--warning)';
+      }
+    } catch (e) {
+      statusEl.textContent = '❌ 连接失败: ' + e.message;
+      statusEl.style.color = 'var(--danger)';
+    }
+  }
+
+  // ==================== Data Import/Export ====================
+  async exportData() {
+    const data = {
+      version: 2,
+      exportedAt: now(),
+      tasks: this.tasks,
+      habits: this.habits,
+      goals: this.goals
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `planflow-backup-${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async importData(file) {
+    if (!file) return;
+    if (!(await this.confirmDialog('导入将覆盖当前所有数据，确定继续吗？', { danger: true, title: '导入数据', confirmText: '覆盖导入' }))) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.tasks || !data.habits) throw new Error('无效的备份文件格式');
+      data.goals = data.goals || [];
+      // Clear existing
+      await this.db.clear('tasks');
+      await this.db.clear('habits');
+      await this.db.clear('goals');
+      // Import
+      for (const t of data.tasks) await this.db.put('tasks', t);
+      for (const h of data.habits) await this.db.put('habits', h);
+      for (const g of (data.goals || [])) await this.db.put('goals', g);
+      alert('数据导入成功！');
+      await this.loadData();
+      this.renderAll();
+    } catch (e) {
+      alert('导入失败：' + e.message);
+    }
+  }
+
+  async clearAllData() {
+    if (!(await this.confirmDialog('确定要清空所有数据吗？所有任务、习惯和目标将被永久删除，此操作不可恢复！', { danger: true, title: '清空所有数据', confirmText: '永久删除' }))) return;
+    await this.db.clear('tasks');
+    await this.db.clear('habits');
+    await this.db.clear('goals');
+    this.tasks = [];
+    this.habits = [];
+    this.goals = [];
+    this.renderAll();
+  }
+
+  // ==================== Plan View (双瀑布规划面板) ====================
+  renderPlanView() {
+    if (this.planMode === 'month') {
+      this.renderMonthCalendar();
+      this.renderPlanTasks(null); // All incomplete tasks
+    } else {
+      this.renderDayTimeline(this.planSelectedDate);
+      this.renderPlanTasks(this.planSelectedDate);
+    }
+  }
+
+  // ==================== Month Calendar ====================
+  renderMonthCalendar() {
+    document.getElementById('planCalTitle').textContent = '📅 月历';
+    const nav = document.getElementById('monthNav'); nav.style.display = 'flex';
+    const y = this.planYear, m = this.planMonth;
+    const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    nav.innerHTML = `
+      <button onclick="App.planYear--; App.renderMonthCalendar()">◀</button>
+      <button onclick="App.planMonth--; if(App.planMonth<0){App.planMonth=11;App.planYear--;} App.renderMonthCalendar()">‹</button>
+      <span class="month-label">${monthNames[m]} ${y}</span>
+      <button onclick="App.planMonth++; if(App.planMonth>11){App.planMonth=0;App.planYear++;} App.renderMonthCalendar()">›</button>
+      <button onclick="App.planYear++; App.renderMonthCalendar()">▶</button>`;
+
+    const firstDay = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayStr = today();
+    const dow = ['日','一','二','三','四','五','六'];
+
+    // Build task counts per day
+    const dayTasks = {};
+    this.tasks.forEach(t => {
+      if (t.dueDate) {
+        const d = t.dueDate;
+        if (!dayTasks[d]) dayTasks[d] = { total: 0, completed: 0, priorities: [] };
+        dayTasks[d].total++;
+        if (t.completed) dayTasks[d].completed++;
+        dayTasks[d].priorities.push(t.priority);
+      }
+    });
+
+    let html = '<div class="month-grid">';
+    dow.forEach(d => html += `<div class="month-dow">${d}</div>`);
+
+    // Previous month padding
+    const prevDays = new Date(y, m, 0).getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+      html += `<div class="month-day other-month">${prevDays - i}</div>`;
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      let cls = 'month-day';
+      if (ds === todayStr) cls += ' today';
+      if (ds === this.planSelectedDate && this.planMode === 'month') cls += ' selected';
+      const info = dayTasks[ds];
+      let dots = '';
+      if (info) {
+        const priColors = { high: 'high', medium: 'medium', low: 'low' };
+        const uniquePris = [...new Set(info.priorities)];
+        dots = '<div class="day-dots">' + uniquePris.map(p => `<div class="day-dot ${priColors[p]||'medium'}"></div>`).join('') + '</div>';
+      }
+      html += `<div class="${cls}" onclick="App.selectPlanDay('${ds}')">${d}${dots}</div>`;
+    }
+
+    // Next month padding
+    const remaining = (7 - ((firstDay + daysInMonth) % 7)) % 7;
+    for (let i = 1; i <= remaining; i++) {
+      html += `<div class="month-day other-month">${i}</div>`;
+    }
+
+    html += '</div>';
+    document.getElementById('planCalBody').innerHTML = html;
+    document.getElementById('planTaskDate').textContent = '';
+    document.getElementById('planTaskTitle').textContent = '📋 待办池（全部）';
+  }
+
+  // ==================== Day Selection ====================
+  selectPlanDay(date) {
+    this.planSelectedDate = date;
+    this.planMode = 'day';
+    this.renderPlanView();
+  }
+
+  backToMonth() {
+    this.planMode = 'month';
+    this.renderPlanView();
+  }
+
+  // ==================== Day Timeline ====================
+  renderDayTimeline(date) {
+    const d = new Date(date + 'T00:00:00');
+    const weekDay = ['日','一','二','三','四','五','六'][d.getDay()];
+    document.getElementById('planCalTitle').textContent = `⏰ ${date} 周${weekDay}`;
+    const nav = document.getElementById('monthNav');
+    nav.style.display = 'flex';
+    nav.innerHTML = `<button onclick="App.backToMonth()">← 返回月历</button>`;
+
+    // Tasks for this date
+    const dayTasks = this.tasks.filter(t => t.dueDate === date);
+
+    let html = '';
+    const startH = 7, endH = 23;
+
+    // Build time slots
+    for (let h = startH; h < endH; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const hourStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        html += `<div class="time-slot" data-hour="${h}" data-minute="${m}"
+          ondragover="event.preventDefault(); this.classList.add('drop-target');"
+          ondragleave="this.classList.remove('drop-target');"
+          ondrop="App.dropTaskToSlot('${hourStr}', '${date}'); this.classList.remove('drop-target');"
+        ><span class="time-label">${hourStr}</span></div>`;
+      }
+    }
+
+    // Overlay task blocks
+    let blocks = '';
+    dayTasks.forEach(t => {
+      if (!t.dueTime) return;
+      const [th, tm] = (t.dueTime || '00:00').split(':').map(Number);
+      if (th < startH || th >= endH) return;
+      const dur = (t.estimatedDuration || 30);
+      const top = ((th - startH) * 60 + tm) * (28 / 30); // 28px per 30min
+      const height = Math.max(28, dur * (28 / 30));
+      const priCls = t.priority || 'medium';
+      const doneCls = t.completed ? ' done' : '';
+      blocks += `<div class="timeline-block ${priCls}${doneCls}" style="top:${top}px;height:${height}px;"
+        onclick="App.editTask('${t.id}')"
+        draggable="true"
+        ondragstart="App.dragTimelineBlock(event,'${t.id}')"
+        ondragend="this.style.opacity=''"
+      >${t.completed?'✓ ':''}${this.esc(t.title)} <span style="font-size:0.65rem;opacity:0.7;">${dur}min</span></div>`;
+    });
+
+    document.getElementById('planCalBody').innerHTML = `<div class="timeline-slots" id="timelineSlots">${html}${blocks}</div>`;
+    document.getElementById('planTaskTitle').textContent = `📋 ${date} 待办`;
+    document.getElementById('planTaskDate').textContent = `周${weekDay}`;
+  }
+
+  // ==================== Plan Tasks (right panel) ====================
+  renderPlanTasks(date) {
+    const body = document.getElementById('planTaskBody');
+    let tasks = this.tasks.filter(t => !t.parentId);
+    if (date) {
+      tasks = tasks.filter(t => t.dueDate === date);
+    } else {
+      tasks = tasks.filter(t => !t.dueDate && !t.completed);
+    }
+
+    const incomplete = tasks.filter(t => !t.completed);
+    const completed = tasks.filter(t => t.completed);
+    incomplete.sort((a, b) => a.order - b.order);
+
+    let html = '';
+
+    // Incomplete tasks
+    incomplete.forEach(t => {
+      html += this._planTaskRow(t);
+    });
+
+    // Add task input
+    html += `<div class="add-task-row" style="margin:8px 0;">
+      <input class="add-task-input" id="planAddInput" placeholder="添加任务..." onkeydown="if(event.key==='Enter')App._planAddTask('${date||''}')">
+      <select class="add-task-priority" id="planAddPriority">
+        <option value="medium">🟡</option><option value="high">🔴</option><option value="low">⚪</option>
+      </select>
+      <input class="duration-input" id="planAddDur" placeholder="min" value="30" style="width:40px;">
+      <button class="add-task-btn" onclick="App._planAddTask('${date||''}')">添加</button>
+    </div>`;
+
+    // Completed tasks
+    if (completed.length > 0) {
+      html += '<div style="margin-top:12px;font-size:0.78rem;color:var(--text-muted);font-weight:600;">── 已完成 ──</div>';
+      completed.forEach(t => { html += this._planTaskRow(t); });
+    }
+
+    if (incomplete.length === 0 && completed.length === 0) {
+      html = `<div class="empty-state"><div class="empty-icon">📋</div><h3>暂无任务</h3><p>${date ? '这天没有安排任务' : '在上方输入框添加任务'}</p></div>` + html;
+    }
+
+    body.innerHTML = html;
+  }
+
+  _planTaskRow(task) {
+    const completed = task.completed ? 'completed' : '';
+    const dur = task.estimatedDuration || 0;
+    const spent = task.timeSpent || 0;
+    const isTiming = this.activeTimerId === task.id;
+    return `
+      <div class="task-item ${completed}" data-id="${task.id}" draggable="${!task.completed}"
+        ondragstart="event.stopPropagation(); App._dragTaskStart(event, '${task.id}')"
+        ondragend="App._dragTaskEnd(event)">
+        <span class="task-drag-handle" title="拖拽到日历">⋮⋮</span>
+        <div class="task-check" onclick="event.stopPropagation(); App.toggleTask('${task.id}')"></div>
+        <span class="task-title" onclick="App.editTask('${task.id}')">${this.esc(task.title)}</span>
+        <span class="task-priority ${task.priority}"></span>
+        ${dur > 0 ? `<span class="task-duration">${dur}min</span>` : ''}
+        <span class="timer-display${isTiming?' running':''}" id="timer-${task.id}">${this._formatTime(spent)}</span>
+        ${!task.completed ? `
+        <div class="task-actions" style="opacity:1;">
+          ${isTiming
+            ? `<button class="task-btn" title="暂停" onclick="event.stopPropagation(); App.pauseTimer('${task.id}')">⏸</button>
+               <button class="task-btn" title="停止" onclick="event.stopPropagation(); App.stopTimer('${task.id}')">⏹</button>`
+            : `<button class="task-btn" title="开始计时" onclick="event.stopPropagation(); App.startTimer('${task.id}')">▶</button>`
+          }
+          <button class="task-btn" title="设置触发器" onclick="event.stopPropagation(); App._showTriggerModal('${task.id}')" style="font-size:0.75rem;">⚡</button>
+        </div>` : ''}
+      </div>
+    `;
+  }
+
+  async _planAddTask(date) {
+    const input = document.getElementById('planAddInput');
+    const title = input?.value?.trim();
+    if (!title) return;
+    const priority = document.getElementById('planAddPriority')?.value || 'medium';
+    const dur = parseInt(document.getElementById('planAddDur')?.value) || 0;
+    const task = {
+      id: uuid(), title, notes: '', completed: false, priority,
+      tags: [], dueDate: date || null, parentId: null,
+      order: this.tasks.length, createdAt: now(), completedAt: null,
+      estimatedDuration: dur, timeSpent: 0
+    };
+    this.tasks.push(task);
+    await this.db.put('tasks', task);
+    input.value = '';
+    this.renderPlanView();
+  }
+
+  // ==================== Timer ====================
+  startTimer(taskId) {
+    if (this.activeTimerId && this.activeTimerId !== taskId) {
+      this.pauseTimer(this.activeTimerId);
+    }
+    this.activeTimerId = taskId;
+    this.timerSeconds = 0;
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) this.timerSeconds = Math.floor((task.timeSpent || 0) / 1000);
+
+    if (this.timerInterval) clearInterval(this.timerInterval);
+    this.timerInterval = setInterval(() => {
+      this.timerSeconds++;
+      this._updateTimerDisplay(taskId);
+    }, 1000);
+
+    this.renderPlanView();
+  }
+
+  pauseTimer(taskId) {
+    if (this.timerInterval) { clearInterval(this.timerInterval); this.timerInterval = null; }
+    if (this.activeTimerId === taskId) {
+      const task = this.tasks.find(t => t.id === taskId);
+      if (task) { task.timeSpent = this.timerSeconds * 1000; this.db.put('tasks', task); }
+      this.activeTimerId = null;
+    }
+    this.renderPlanView();
+  }
+
+  stopTimer(taskId) {
+    this.pauseTimer(taskId);
+    this.timerSeconds = 0;
+    this.renderPlanView();
+  }
+
+  _updateTimerDisplay(taskId) {
+    const el = document.getElementById('timer-' + taskId);
+    if (el) el.textContent = this._formatTime(this.timerSeconds * 1000);
+  }
+
+  _formatTime(ms) {
+    const s = Math.floor((ms || 0) / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  // ==================== Drag & Drop ====================
+  _dragTaskStart(e, taskId) {
+    this.dragTaskId = taskId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
+    // Create ghost
+    const task = this.tasks.find(t => t.id === taskId);
+    if (task) {
+      const ghost = document.createElement('div');
+      ghost.className = 'drag-ghost';
+      ghost.textContent = task.title;
+      document.body.appendChild(ghost);
+      e.dataTransfer.setDragImage(ghost, 0, 0);
+      setTimeout(() => ghost.remove(), 0);
+    }
+  }
+
+  _dragTaskEnd(e) { this.dragTaskId = null; }
+
+  dragTimelineBlock(e, taskId) {
+    e.dataTransfer.setData('text/plain', taskId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.target.style.opacity = '0.4';
+  }
+
+  async dropTaskToSlot(hourMin, date) {
+    // Remove drop styling from all slots
+    document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('drop-target'));
+
+    const taskId = this.dragTaskId;
+    if (!taskId) return;
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    // Check for conflict
+    const [h, m] = hourMin.split(':').map(Number);
+    const dur = (task.estimatedDuration || 30);
+    const endMin = h * 60 + m + dur;
+    const existing = this.tasks.filter(t =>
+      t.id !== taskId && t.dueDate === date && t.dueTime &&
+      !t.completed
+    );
+    let hasConflict = false;
+    for (const ex of existing) {
+      const [eh, em] = (ex.dueTime || '00:00').split(':').map(Number);
+      const exStart = eh * 60 + em;
+      const exEnd = exStart + (ex.estimatedDuration || 30);
+      const newStart = h * 60 + m;
+      if (newStart < exEnd && endMin > exStart) { hasConflict = true; break; }
+    }
+
+    if (hasConflict) {
+      // Highlight conflict and auto-shift
+      const slot = document.querySelector(`.time-slot[data-hour="${h}"][data-minute="${m}"]`);
+      if (slot) slot.classList.add('conflict');
+      // Find next available slot
+      let nextH = h, nextM = m + 30;
+      while (nextH < 23) {
+        if (nextM >= 60) { nextH++; nextM = 0; }
+        let clear = true;
+        for (const ex of existing) {
+          const [eh, em] = (ex.dueTime || '00:00').split(':').map(Number);
+          const exStart = eh * 60 + em;
+          const exEnd = exStart + (ex.estimatedDuration || 30);
+          const ns = nextH * 60 + nextM;
+          if (ns < exEnd && ns + dur > exStart) { clear = false; break; }
+        }
+        if (clear) break;
+        nextM += 30;
+      }
+      task.dueTime = `${String(nextH).padStart(2,'0')}:${String(nextM).padStart(2,'0')}`;
+    } else {
+      task.dueTime = hourMin;
+    }
+    task.dueDate = date;
+    await this.db.put('tasks', task);
+    this.dragTaskId = null;
+    this.renderPlanView();
+  }
+
+  // ==================== AI Goal → Calendar Scheduling ====================
+  async scheduleGoalToCalendar(goalId) {
+    const goal = this.goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const ms = goal.milestones || [];
+    if (ms.length === 0) {
+      // Try to decompose first
+      this.showGoalModal(goalId);
+      alert('请先为这个目标添加里程碑，或使用 AI 拆解功能');
+      return;
+    }
+
+    this.navigate('ai');
+    const msg = `📅 将目标「${goal.title}」的里程碑排程到日历`;
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', '⏳ 正在分析目标里程碑，生成时间安排...');
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+
+    const context = {
+      goal: { title: goal.title, description: goal.description, deadline: goal.deadline },
+      milestones: ms.map((m, i) => ({ index: i, title: m.title, completed: m.completed })),
+      today: today(),
+      existingTasks: this.tasks.filter(t => !t.completed).map(t => ({ title: t.title, dueDate: t.dueDate }))
+    };
+
+    const prompt = `你是一个项目规划专家。请将以下目标的里程碑安排到日历上。
+
+目标：${goal.title}
+截止日期：${goal.deadline || '未设置'}
+里程碑：${ms.filter(m=>!m.completed).map((m,i)=>`${i+1}. ${m.title}`).join('\n')}
+
+请为每个未完成的里程碑建议一个日期（格式 YYYY-MM-DD），考虑截止日期、里程碑之间的依赖关系、和现有任务。
+
+严格按以下JSON格式回复：
+{ "排程": [{"里程碑": "里程碑标题", "日期": "YYYY-MM-DD", "理由": "简短说明"}] }`;
+
+    try {
+      const response = await this.callAI(prompt, context);
+      let data = null;
+      const clean = response.replace(/\u201c/g, '"').replace(/\u201d/g, '"');
+      const m = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || clean.match(/(\{[\s\S]*\})/);
+      if (m) try { data = JSON.parse(m[1]); } catch(e) {}
+      if (!data) try { data = JSON.parse(clean); } catch(e) {}
+
+      if (data?.排程 && data.排程.length) {
+        // Show schedule modal
+        this._showScheduleModal(goal, data.排程, el);
+      } else if (el) {
+        el.innerHTML = 'AI 未能生成有效排程，请手动设置里程碑日期。<br><br>' +
+          data?.排程 ? JSON.stringify(data.排程) : response.slice(0, 300);
+      }
+    } catch (e) {
+      if (el) el.textContent = '⚠️ 排程失败：' + (e.message || '网络错误');
+    }
+  }
+
+  _showScheduleModal(goal, schedule, chatEl) {
+    // Build modal
+    let rows = schedule.map((s, i) => `
+      <div class="schedule-row">
+        <div class="sch-main">
+          <div class="sch-title">${i+1}. ${this.esc(s.里程碑)}</div>
+          ${s.理由 ? '<div class="sch-reason">' + this.esc(s.理由) + '</div>' : ''}
+        </div>
+        <input type="text" class="dp-input" id="schDate${i}" value="${s.日期||''}" placeholder="选择日期" readonly onclick="event.stopPropagation();App.toggleDatePicker('schDate${i}')">
+      </div>`).join('');
+
+    const existing = document.getElementById('scheduleModalOverlay');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="modal-overlay open" id="scheduleModalOverlay" onclick="if(event.target===this)document.getElementById('scheduleModalOverlay').remove()">
+        <div class="modal" style="max-width:550px;">
+          <h3>📅 排程到日历 — ${this.esc(goal.title)}</h3>
+          <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;">调整日期后点击确认，任务将自动创建到对应日期</p>
+          ${rows}
+          <div class="modal-actions">
+            <button class="btn" onclick="document.getElementById('scheduleModalOverlay').remove()">取消</button>
+            <button class="btn btn-primary" onclick="App._confirmSchedule('${goal.id}')">✅ 确认排程</button>
+          </div>
+        </div>
+      </div>
+    `);
+
+    if (chatEl) {
+      chatEl.innerHTML = `AI 已为「${this.esc(goal.title)}」的 ${schedule.length} 个里程碑建议了日期。<br><br>请在弹出的窗口中调整确认 👆`;
+    }
+  }
+
+  async _confirmSchedule(goalId) {
+    const schedule = [];
+    document.querySelectorAll('#scheduleModalOverlay .schedule-row').forEach((row, i) => {
+      const dateInput = row.querySelector('.dp-input');
+      const titleSpan = row.querySelector('.sch-title');
+      if (dateInput?.value) {
+        schedule.push({ milestone: titleSpan?.textContent?.replace(/^\d+\.\s*/, '') || '', date: dateInput.value });
+      }
+    });
+    document.getElementById('scheduleModalOverlay')?.remove();
+
+    let created = 0;
+    for (const s of schedule) {
+      const task = {
+        id: uuid(), title: `🎯 ${s.milestone}`, notes: `目标: ${goalId}`,
+        completed: false, priority: 'high', tags: ['目标'],
+        dueDate: s.date, parentId: null, goalId: goalId,
+        order: this.tasks.length, createdAt: now(), completedAt: null,
+        estimatedDuration: 60, timeSpent: 0
+      };
+      await this.db.put('tasks', task);
+      this.tasks.push(task);
+      created++;
+    }
+
+    this._addAIChatMsg('assistant', `✅ 已将 ${created} 个里程碑任务排程到日历，可在规划面板查看`);
+    this.renderAll();
+  }
+
+  // ==================== Enhanced Schedule ====================
+  async planTodaySchedule() {
+    this.navigate('ai');
+    const todayStr = today();
+    const todayTasks = this.tasks.filter(t => !t.completed && (!t.dueDate || t.dueDate === todayStr));
+    const habitsToday = this.habits.map(h => ({
+      title: h.title, streak: h.currentStreak || 0,
+      doneToday: h.checkins?.[todayStr] || false, color: h.color
+    }));
+
+    const msg = `🕐 帮我安排今天的日程`;
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', '⏳ 正在分析你的今日任务、时长和习惯...');
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+
+    const context = {
+      todayTasks: todayTasks.map(t => ({
+        title: t.title, priority: t.priority,
+        estimatedMinutes: t.estimatedDuration || 0,
+        dueTime: t.dueTime || null
+      })),
+      todayHabits: habitsToday,
+      goals: this.goals.filter(g => this.goalProgress(g) < 100)
+        .map(g => ({ title: g.title, progress: this.goalProgress(g), deadline: g.deadline })),
+      date: todayStr,
+      weekday: ['日','一','二','三','四','五','六'][new Date().getDay()]
+    };
+
+    const prompt = `你是时间管理教练。用户通常作息：8:40起床，11:30午饭(30-60min)，18:00-19:00晚饭。
+
+今日任务已标注预估时长（分钟）。请按以下结构制定时间分配：
+
+## ⏰ 时间安排
+**上午 (8:40-11:30)**
+列出任务和建议时段，匹配时长。
+
+**下午 (12:30-18:00)**
+**晚间 (19:00后)**
+
+## 🔥 习惯提醒
+## 💡 建议
+
+可创建的任务用 [TASK: 任务名 | priority: high/medium/low | date: YYYY-MM-DD | time: HH:mm | duration: 分钟数] 格式（时间字段根据用户需求可选）。
+根据任务时长合理分配，不要超时。`;
+
+    try {
+      const response = await this.callAI(prompt, context);
+      if (el) { el.innerHTML = this._fmtAI(response); this._saveChatHistory(); }
+    } catch (e) {
+      if (el) el.textContent = '⚠️ 排程失败：' + (e.message || '网络错误');
+    }
+  }
+
+  // ==================== Utils ====================
+  toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    sb.classList.toggle('collapsed');
+    const btn = sb.querySelector('.sidebar-toggle');
+    btn.textContent = sb.classList.contains('collapsed') ? '▶' : '◀';
+    localStorage.setItem('planflow-sidebar', sb.classList.contains('collapsed') ? '1' : '0');
+  }
+
+  _updateTimeOfDay() {
+    const h = new Date().getHours();
+    const tod = h >= 5 && h < 11 ? 'morning' : h >= 11 && h < 17 ? 'afternoon' : h >= 17 && h < 21 ? 'evening' : 'night';
+    document.body.className = document.body.className.replace(/tod-\w+/g, '');
+    document.body.classList.add('tod-' + tod);
+  }
+
+  // ==================== If-Then Triggers ====================
+  _showTriggerModal(taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const trigger = task.ifTrigger || '';
+    const [cond = '', act = ''] = trigger.split('→').map(s => s.trim());
+    const existing = document.getElementById('triggerModalOverlay');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', `
+      <div class="modal-overlay open" id="triggerModalOverlay" onclick="if(event.target===this)this.remove()">
+        <div class="modal" style="max-width:440px;">
+          <h3>⚡ 执行意图 — ${this.esc(task.title)}</h3>
+          <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px;">设置 "如果…就…" 触发器，研究证明可提高 2-3 倍完成率</p>
+          <div class="modal-row"><label>如果</label><input class="modal-input" id="trCond" placeholder="吃完午饭 / 打开电脑 / 晚上9点" value="${this.esc(cond)}" style="flex:1;margin-bottom:4px;"></div>
+          <div class="modal-row"><label>我就</label><input class="modal-input" id="trAct" placeholder="${this.esc(task.title)}" value="${this.esc(act)}" style="flex:1;margin-bottom:4px;"></div>
+          <div class="modal-actions">
+            <button class="btn" onclick="document.getElementById('triggerModalOverlay').remove()">取消</button>
+            <button class="btn" style="color:var(--accent);border-color:var(--accent);" onclick="App._aiSuggestTrigger('${taskId}')">🤖 AI 建议</button>
+            <button class="btn btn-primary" onclick="App._saveTrigger('${taskId}')">保存</button>
+          </div>
+        </div>
+      </div>`);
+  }
+
+  async _aiSuggestTrigger(taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const title = task.title;
+    const condInput = document.getElementById('trCond');
+    if (condInput) condInput.placeholder = '⏳ AI 思考中...';
+    try {
+      const prompt = `用户有一个任务：「${title}」。请建议一个"如果…就…"执行意图触发器。格式：如果[具体场景/时间]→我就[具体行动]。只回复这一句话。`;
+      const resp = await this.callAI(prompt, {});
+      const parts = resp.replace(/如果|我就/g, '').split('→').map(s => s.trim());
+      if (condInput && parts[0]) condInput.value = parts[0];
+      const actInput = document.getElementById('trAct');
+      if (actInput && parts[1]) actInput.value = parts[1];
+      if (condInput) condInput.placeholder = '如果...';
+    } catch (e) {
+      if (condInput) condInput.placeholder = '如果...';
+    }
+  }
+
+  async _saveTrigger(taskId) {
+    const task = this.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const cond = document.getElementById('trCond')?.value?.trim();
+    const act = document.getElementById('trAct')?.value?.trim();
+    if (cond && act) {
+      task.ifTrigger = `如果 ${cond} → 我就 ${act}`;
+      // Schedule notification if time-like condition
+      const timeMatch = cond.match(/(\d{1,2})[:：](\d{2})/);
+      if (timeMatch) {
+        const h = parseInt(timeMatch[1]), m = parseInt(timeMatch[2]);
+        this._scheduleNotification(task.title, h, m);
+      }
+    }
+    await this.db.put('tasks', task);
+    document.getElementById('triggerModalOverlay')?.remove();
+    this.renderPlanView();
+  }
+
+  _scheduleNotification(title, hour, minute) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') Notification.requestPermission();
+    const now = new Date();
+    const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const delay = target - now;
+    if (delay > 0 && delay < 86400000) {
+      setTimeout(() => {
+        if (Notification.permission === 'granted') {
+          new Notification('PlanFlow ⚡', { body: `该执行「${title}」了！`, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">✦</text></svg>' });
+        }
+      }, delay);
+    }
+  }
+
+  // ==================== AI Daily Earnings Report ====================
+  async generateEarningsReport() {
+    this.navigate('ai');
+    const todayStr = today();
+    const todayTasks = this.tasks.filter(t => t.completed && t.completedAt?.startsWith(todayStr));
+    const totalSec = todayTasks.reduce((s, t) => s + (t.timeSpent || 0), 0);
+    const totalMin = Math.round(totalSec / 60000);
+    const totalH = (totalMin / 60).toFixed(1);
+
+    const msg = `🌟 生成今日收益报告`;
+    this._addAIChatMsg('user', msg);
+    const id = this._addAIChatMsg('assistant', `⏳ 正在汇总今日成果...\n📊 完成 ${todayTasks.length} 个任务 · ⏱ 专注 ${totalH}h`);
+    const el = document.getElementById(id)?.querySelector('.ai-chat-content');
+
+    const context = {
+      today: todayStr,
+      weekday: ['日','一','二','三','四','五','六'][new Date().getDay()],
+      completedTasks: todayTasks.map(t => ({ title: t.title, timeMin: Math.round((t.timeSpent||0)/60000), priority: t.priority })),
+      totalTimeMin: totalMin,
+      totalTimeH: totalH,
+      goals: this.goals.map(g => ({ title: g.title, progress: this.goalProgress(g), deadline: g.deadline })),
+      allTasks: this.tasks.length,
+      habits: this.habits.map(h => ({ title: h.title, streak: h.currentStreak, doneToday: h.checkins?.[todayStr] || false }))
+    };
+
+    const prompt = `你是用户的个人成长教练。请根据今日数据生成一份"收益报告"。风格积极温暖，让用户感受到今天的价值。
+
+## 🌟 今日收益
+- 专注时长及完成的成就感
+- 每个任务的价值简述
+
+## 📈 进度投影
+- 如果有进行中的目标，估算按今日速度多久完成
+- 本周趋势
+
+## 💪 明日预告
+- 基于未完成任务，给出明天1-2个优先级建议
+- 使用 [TASK: ...] 格式
+
+保持简洁，200字以内。`;
+
+    try {
+      const response = await this.callAI(prompt, context);
+      if (el) { el.innerHTML = this._fmtAI(response); this._saveChatHistory(); }
+    } catch (e) {
+      if (el) el.textContent = '⚠️ 报告生成失败：' + (e.message || '网络错误');
+    }
+  }
+
+  esc(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  updateDates() {
+    const dateStr = fmtDate(new Date());
+    document.getElementById('headerDate').textContent = dateStr;
+    document.getElementById('todayDate')?.textContent && (document.getElementById('todayDate').textContent = dateStr);
+    document.getElementById('tasksDate')?.textContent && (document.getElementById('tasksDate').textContent = dateStr);
+  }
+}
+
+const App = new AppClass();
+document.addEventListener('DOMContentLoaded', () => App.init());
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => { if(!localStorage.getItem('planflow-theme')) { App.theme = e.matches ? 'dark' : 'light'; App.applyTheme(); } });
+
+// Close modals on overlay click
+document.getElementById('habitModalOverlay')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) App.closeHabitModal();
+});
+document.getElementById('taskModalOverlay')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) App.closeTaskModal();
+});
+</script>
+
+</body>
+</html>
